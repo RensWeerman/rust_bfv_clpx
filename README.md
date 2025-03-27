@@ -1,7 +1,7 @@
 # rust_bfv_clpx
 Implementations for the BFV and CLPX homomorphic encryption schemes in Rust.
 
-Defining paramters:
+Defining parameters:
 ```rust
 let parameters: Parameters<i64> = Parameters {
             degree: 4,
@@ -20,5 +20,4 @@ let mut keys = RLWE::new(_p);
 let message = Polynomial::new(vec![1, 2, 3, 4], _p);
 let ciphertext = RLWE::encrypt(&keys.public, &m);
 let plaintext = keys.decrypt(&ct);
-
 ```
