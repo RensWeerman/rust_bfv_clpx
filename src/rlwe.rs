@@ -1,19 +1,9 @@
-use std::{
-    cell::RefCell,
-    fmt::Display,
-    ops::{BitAnd, Div, Sub},
-    rc::Rc,
-};
-
-use num_traits::{one, zero, Euclid, FromPrimitive, One, Zero};
-use rand::thread_rng;
-use rand_distr::{Distribution, Normal};
+use std::{cell::RefCell, rc::Rc};
 
 use crate::{
-    lwe_old::delta_polyn,
     montgomery::{square_multiply, square_multiply_no_mod},
     ntt::Ntt,
-    polynomial::{self, make_fx, Parameters, Polynomial, Sampling, Value},
+    polynomial::{make_fx, Parameters, Polynomial, Value},
     print_vec,
 };
 
@@ -188,18 +178,6 @@ where
     //     k_0 = &k_0 + &(&secret_2 * &Polynomial::new(vec![self.p()], self.parameters()));
     //     (k_0, a)
     // }
-
-    pub fn sample(&mut self, degree: i32) -> Vec<i32> {
-        //let mut rng = rand::rngs::StdRng::seed_from_u64(100);
-        let normal = Normal::new(0.0, 1.0).unwrap();
-        let mut sample = Vec::new();
-        for _ in 0..degree {
-            let x: f32 = normal.sample(&mut rand::thread_rng());
-            let x = x.trunc();
-            sample.push(x as i32);
-        }
-        sample
-    }
     pub fn compute_encryption(
         pk: &(Polynomial<Val>, Polynomial<Val>),
         m: &Polynomial<Val>,
@@ -252,7 +230,7 @@ where
         let delta = Polynomial::new(x.to_vec(), params);
         println!("Delta before scaling: {}", delta);
         let div =
-            (square_multiply((t.val.get(0).unwrap()).clone(), range, c.q().clone()) + Val::one());
+            square_multiply((t.val.get(0).unwrap()).clone(), range, c.q().clone()) + Val::one();
         let scaler = (Val::zero() - c.q().clone()) / div.clone();
         println!("Num : {}, Den: {}", c.q(), div);
         println!("Scaler: {}", scaler);
@@ -488,32 +466,6 @@ where
 
     //     (&ct.0 + &c_2_0, &ct.1 + &c_2_1)
     // }
-
-    fn basic_mul_other(
-        this: (Polynomial<Val>, Polynomial<Val>),
-        other: (Polynomial<Val>, Polynomial<Val>),
-    ) -> (Polynomial<Val>, Polynomial<Val>, Polynomial<Val>) {
-        let degree = this.0.degree();
-        //assert_eq!(degree, this.1.degree());
-        //assert_eq!(degree, other.0.degree());
-        //assert_eq!(degree, other.1.degree());
-
-        let out_0_raw = &this.0.clone() * &other.0.clone();
-        let out_1_raw =
-            &(&this.0.clone() * &other.1.clone()) + &(&this.1.clone() * &other.0.clone());
-        let out_2_raw = &this.1.clone() * &other.1.clone();
-
-        //let delta_inv = T_RELIN as f64 / Q as f64;
-        let out_0 = &(RLWE::delta_polyn(out_0_raw)) % &make_fx(this.0.parameters());
-        let out_1 = &(RLWE::delta_polyn(out_1_raw)) % &make_fx(this.0.parameters());
-        let out_2 = &(RLWE::delta_polyn(out_2_raw)) % &make_fx(this.0.parameters());
-
-        (
-            out_0.mod_q(), //(this.0.q()),
-            out_1.mod_q(), //(this.0.q()),
-            out_2.mod_q(), //(this.0.q()),
-        )
-    }
 }
 pub fn get_def_params() -> Parameters<i64> {
     return Parameters {
@@ -695,25 +647,6 @@ mod tests {
         );
         let res_1 = RLWE::mult_ct(&ciphertext_1, &ciphertext_2);
         let res_2 = RLWE::new_mult_ct(&ciphertext_1, &ciphertext_2);
-
-        print_vec(&res_1.0.get_mod().val);
-        print_vec(&res_2.0.get_mod().val);
-        assert_eq!(res_1, res_2);
-    }
-    #[test]
-    fn cipher_mult_test() {
-        let _p = &Rc::new(RefCell::new(get_def_params()));
-        let secret = RLWE::new(_p);
-        let ciphertext_1 = RLWE::encrypt(
-            &secret.public,
-            &Polynomial::new(vec![1, 999, 4, 5, 1, 0, 3, 4], _p),
-        );
-        let ciphertext_2 = RLWE::encrypt(
-            &secret.public,
-            &Polynomial::new(vec![6, 4, 2, 1, 0, 1, 2, 304, 463, 342, 325], _p),
-        );
-        let res_1 = RLWE::mult_ct(&ciphertext_1, &ciphertext_2);
-        let res_2 = RLWE::basic_mul_other(ciphertext_1, ciphertext_2);
 
         print_vec(&res_1.0.get_mod().val);
         print_vec(&res_2.0.get_mod().val);

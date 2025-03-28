@@ -1,25 +1,22 @@
-use num_bigint::{BigInt, BigUint, RandBigInt};
+use num_bigint::{BigInt, RandBigInt};
 
 use crate::rlwe::Params;
-use num_traits::{one, zero, AsPrimitive, Euclid, FromPrimitive, One, Zero};
+use num_traits::{one, zero, Euclid, FromPrimitive, One, Zero};
 use rand_distr::{Distribution, Normal, Uniform};
 use std::{
     cell::RefCell,
-    char::MAX,
     cmp::max,
     fmt::Display,
-    ops::{Add, BitAnd, Div, Mul, Rem, Shr, Sub},
+    ops::{Add, Div, Mul, Rem, Sub},
     rc::Rc,
 };
-use subtle::ConditionallySelectable;
 #[derive(PartialEq, Debug, Clone)]
 pub struct Polynomial<Value> {
     pub val: Vec<Value>,
     pub parameters: Rc<RefCell<Parameters<Value>>>,
 }
-use once_cell::sync::Lazy;
 
-use crate::{montgomery, ntt::Ntt, print_vec};
+use crate::ntt::Ntt;
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Parameters<Val> {
@@ -358,7 +355,7 @@ where
             for f in 0..(i + 1) {
                 let _a = self.val.get(f).unwrap_or(&zero);
                 let _b = rhs.val.get(i - f).unwrap_or(&zero);
-                s = (s + (_a.clone() * _b.clone()));
+                s = s + (_a.clone() * _b.clone());
             }
             c.push(s);
         }
@@ -400,7 +397,7 @@ where
         for i in 0..max(self.degree(), rhs.degree()) {
             let a = self.val.get(i).unwrap_or(&zero);
             let b = rhs.val.get(i).unwrap_or(&zero);
-            c.push((a.clone() + b.clone()));
+            c.push(a.clone() + b.clone());
         }
         //c = rm_trailing_zeroes(c);
         Polynomial::new(c, self.parameters())
@@ -768,24 +765,20 @@ mod tests {
         let p2 = Polynomial::uniform_sample(_p);
         let ls = p1.old_mul(&p2);
         let ls = RLWE::delta_polyn(ls.clone()).mod_q();
-        println!("LS: ");
-        print_vec(&ls.val);
+        println!("LS: {}", ls);
         let degree = p1.parameters().borrow().degree;
         let q = &p1.parameters().borrow().q.clone();
         let big_q = &BigInt::try_from((q - 1) * 17 + 1).unwrap();
         let psi = &Ntt::second_primitive_root(big_q, degree);
         let p1_ntt = Ntt::iter_cooley_tukey(p1, psi, big_q);
         let p2_ntt = Ntt::iter_cooley_tukey(p2, psi, big_q);
-        println!("BEFORE: ");
-        print_vec(&p1_ntt.val);
-        print_vec(&p2_ntt.val);
+        println!("BEFORE: {}, {}", p1_ntt, p2_ntt);
         let mut p_ntt = Ntt::element_wise_mult(p1_ntt, p2_ntt, big_q);
-        println!("RS: ");
-        print_vec(&p_ntt.val);
+        println!("RS: {}", p_ntt);
         let rs = Ntt::iter_gentleman_sande(p_ntt, psi, big_q);
         let rs = RLWE::delta_polyn(rs).mod_q();
 
-        print_vec(&rs.val);
+        println!("AFTER RS: {}", rs);
 
         assert_eq!(ls.get_mod().mod_q(), rs.mod_q());
     }
@@ -804,25 +797,20 @@ mod tests {
         let p2 = Polynomial::new(vec![5, 6, 7, 8], _p);
         let ls = p1.old_mul(&p2);
         let ls = RLWE::delta_polyn(ls).mod_q();
-        println!("LS: ");
-        print_vec(&ls.val);
+        println!("LS: {}", ls);
         let degree = p1.parameters().borrow().degree;
         let q = &p1.parameters().borrow().q.clone();
         let psi = &Ntt::second_primitive_root(q, degree);
         let p1_ntt = Ntt::iter_cooley_tukey(p1, psi, q);
         let p2_ntt = Ntt::iter_cooley_tukey(p2, psi, q);
-        println!("BEFORE: ");
-        print_vec(&p1_ntt.val);
-        print_vec(&p2_ntt.val);
+        println!("BEFORE: {}, {}", p1_ntt, p2_ntt);
         let mut p_ntt = Ntt::element_wise_mult(p1_ntt, p2_ntt, q);
         //let mut delta = Polynomial::new(vec![p_ntt.q() / p_ntt.t(), 0, 0, 0], _p);
         //delta = Ntt::iter_cooley_tukey(delta, psi, q);
         //let p_ntt = Ntt::element_wise_div(p_ntt, delta, q);
-        println!("RS: ");
-        print_vec(&p_ntt.val);
+        println!("RS: {}", p_ntt);
         let p_ntt = RLWE::delta_polyn(p_ntt).mod_q();
-        println!("RS: ");
-        print_vec(&p_ntt.val);
+        println!("RS: {}", p_ntt);
         let rs = Ntt::iter_gentleman_sande(p_ntt, psi, q);
 
         assert_eq!(ls.get_mod().mod_q(), rs.get_mod().mod_q());

@@ -1,19 +1,9 @@
 use montgomery::square_multiply as m_ladder;
-use num_traits::{one, zero, AsPrimitive, Euclid, FromPrimitive, One, Zero};
-use once_cell::sync::Lazy;
-use std::{
-    cell::RefCell,
-    cmp::{max, min},
-    fmt::Display,
-    ops::{BitAnd, Div, Rem, Shr, Sub},
-    rc::Rc,
-};
-use subtle::ConditionallySelectable;
+use std::rc::Rc;
 
 use crate::{
     montgomery,
-    polynomial::{self, Parameters, Polynomial, Sampling, Value},
-    print_vec,
+    polynomial::{Polynomial, Value},
 };
 
 //trait Val: Rem + PartialOrd + Zero + Clone + ConditionallySelectable + One {}
@@ -320,7 +310,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{print_vec, rlwe::get_def_params};
+    use std::cell::RefCell;
+
+    use crate::{polynomial::Parameters, print_vec, rlwe::get_def_params};
 
     use super::*;
     #[test]

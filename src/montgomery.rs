@@ -1,9 +1,6 @@
 use num_bigint::BigUint;
-use num_traits::{one, zero, FromPrimitive, One, Zero};
-use std::{
-    cmp::Ordering,
-    ops::{BitAnd, Div, Rem, Shr, Sub},
-};
+use num_traits::{one, FromPrimitive, One, Zero};
+use std::ops::{BitAnd, Div, Rem, Shr, Sub};
 use subtle::ConditionallySelectable;
 use uint::construct_uint;
 
@@ -12,7 +9,6 @@ construct_uint! {
     pub struct U1024(16);
 }
 
-struct MyType(BigUint);
 impl ConditionallySelectable for U1024 {
     fn conditional_select(a: &Self, b: &Self, choice: subtle::Choice) -> Self {
         return U1024(<[u64; 16]>::conditional_select(&a.0, &b.0, choice));
