@@ -7,7 +7,7 @@ use std::{
     cell::RefCell,
     cmp::max,
     fmt::Display,
-    ops::{Add, Div, Mul, Rem, Sub},
+    ops::{Add, Div, Mul, Neg, Rem, Sub},
     rc::Rc,
 };
 #[derive(PartialEq, Debug, Clone)]
@@ -418,6 +418,15 @@ where
         // res.set_back()
     }
 }
+impl<Val> Neg for &Polynomial<Val>
+where
+    Val: Value,
+{
+    type Output = Polynomial<Val>;
+    fn neg(self) -> Self::Output {
+        return &Polynomial::new(vec![], self.parameters()) - self;
+    }
+}
 
 impl<Val> Sub for &Polynomial<Val>
 where
@@ -509,8 +518,9 @@ where
         let mut quotient: Polynomial<Val> = Polynomial::new(vec![], self.parameters());
         let mut remainder = Polynomial::new(self.val.clone(), self.parameters());
         while (remainder.degree() >= rhs.degree())
-            && ((&remainder.val).into_iter().any(|x| *x != Val::zero()))
+            && ((&remainder.val).into_iter().any(|x| !x.is_zero()))
         {
+            println!("{}, {}", remainder.degree(), rhs.degree());
             /*let t = Vec<i32> = Vec::new();
             for i in 0..degree(remainder) {
                 t.push(0);
@@ -616,7 +626,7 @@ pub fn single_term<Val: Value>(
 
 pub fn rm_trailing_zeroes<Val: Value>(c: Vec<Val>) -> Vec<Val> {
     //return c;
-    let first = c.iter().rev().position(|x| *x != Val::zero());
+    let first = c.iter().rev().position(|x| !x.is_zero());
     match first {
         Some(v) => {
             let mut _c = c.into_iter().rev().collect::<Vec<_>>().split_off(v);
@@ -664,7 +674,7 @@ fn mod_coeff<Val: Value>(coeff: Val, q: Val) -> Val {
 
 #[cfg(test)]
 mod tests {
-    use crate::rlwe::RLWE;
+    use crate::{fractions::Fraction, rlwe::RLWE};
 
     use super::*;
 
@@ -814,6 +824,57 @@ mod tests {
         let rs = Ntt::iter_gentleman_sande(p_ntt, psi, q);
 
         assert_eq!(ls.get_mod().mod_q(), rs.get_mod().mod_q());
+    }
+    #[test]
+    fn for_extended_euclidian() {
+        let parameters = Parameters {
+            degree: 8,
+            q: Fraction::from_i64(7681).unwrap(),
+            t: vec![Fraction::from_i64(20).unwrap()],
+            t_relin: Fraction::from_i64(32).unwrap(),
+            p: Fraction::from_i64(4).unwrap(),
+            log_range: 0,
+        };
+        let _p = &Rc::new(RefCell::new(parameters));
+        let x = Fraction::new(1, 1);
+        Fraction::from_i64(1);
+        let mut a = Polynomial::new(
+            vec![
+                Fraction::new(-1, 1),
+                Fraction::new(0, 1),
+                Fraction::new(-1, 1),
+                Fraction::new(0, 1),
+                Fraction::new(2, 1),
+                Fraction::new(1, 1),
+            ],
+            _p,
+        );
+        let mut b = Polynomial::new(
+            vec![
+                Fraction::new(1, 1),
+                Fraction::new(0, 1),
+                Fraction::new(0, 1),
+                Fraction::new(0, 1),
+                Fraction::new(1, 1),
+            ],
+            _p,
+        );
+
+        let mut div = &a / &b;
+        let mut rem = &a % &b;
+        println!("A: {}, B: {}", a, b);
+        println!("Div: {}, Rem: {}", div, rem);
+
+        while b.degree() > 1 {
+            a = b;
+            b = rem;
+            println!("A: {}, B: {}", a, b);
+            div = &a / &b;
+            rem = &a % &b;
+            println!("Div: {}, Rem: {}", div, rem);
+        }
+
+        assert_eq!(1, 0);
     }
     // #[test]
     // fn comparing_to_other_mult() {

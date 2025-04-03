@@ -52,10 +52,7 @@ where
         let secret = Polynomial::normal_sample(parameters);
         let e = Polynomial::normal_sample(parameters);
         let a = Polynomial::uniform_sample(parameters);
-        let pk = (
-            &Polynomial::new(vec![], parameters) - &(&(&a * &secret) + &e),
-            a,
-        );
+        let pk = (-&(&(&a * &secret) + &e), a);
         RLWE {
             secret,
             public: pk,
@@ -667,7 +664,8 @@ mod tests {
         println!("make_fx : {}", make_fx(_p));
         let mut keys = RLWE::new(_p);
         let test_t = Polynomial::new(vec![20, 1], _p);
-        let m = Polynomial::new(vec![2, 2, 3, 1, 2], _p);
+        //let m = Polynomial::new(vec![2, 2, 3, 1, 2], _p);
+        let m = Polynomial::new(vec![1], _p);
         //let m = &m % &test_t;
         let ct = RLWE::encrypt(&keys.public, &m);
         let pt = keys.decrypt(&ct);

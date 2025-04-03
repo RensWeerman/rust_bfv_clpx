@@ -1,5 +1,6 @@
 mod distributions;
 mod fft;
+mod fractions;
 mod gbfv;
 mod lwe_old;
 mod lwe_testing;
@@ -193,8 +194,8 @@ fn example_pk() {
 }
 fn p_q_gradient() {
     let mut parameters = polynomial::Parameters {
-        degree: 16,
-        q: 7681,
+        degree: 4,
+        q: 100,
         t: vec![6],
         t_relin: 32,
         p: 4,
@@ -202,16 +203,17 @@ fn p_q_gradient() {
     };
     let mut buf = String::new();
     for i in 1..(parameters.q) {
-        parameters.t = vec![i];
-        let _p = &Rc::new(RefCell::new(parameters.clone()));
-        let m = Polynomial::new(vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], _p);
+        for _ in 1..40 {
+            parameters.t = vec![i];
+            let _p = &Rc::new(RefCell::new(parameters.clone()));
+            let m = Polynomial::new(vec![5, 5, 5, 5], _p);
 
-        let mut secret = RLWE::new(_p);
-        let rlk = secret.evaluate_key_gen();
+            let mut secret = RLWE::new(_p);
 
-        let c = RLWE::encrypt(&secret.public, &m);
-        let p = secret.decrypt(&c);
-        write!(&mut buf, "{}\n", p);
+            let c = RLWE::encrypt(&secret.public, &m);
+            let p = secret.decrypt(&c);
+            write!(&mut buf, "{}\n", p).unwrap();
+        }
     }
     fs::write(
         "/Users/rensweerman/Documents/PythonScripts/Q_vs_T/vectors.txt",
@@ -353,6 +355,29 @@ fn testing_big_ints() {
     assert_eq!(ls, rs);
     println!("Worked");
 }
+fn broken_example() {
+    let mut parameters = polynomial::Parameters {
+        degree: 4,
+        q: 100,
+        t: vec![5],
+        t_relin: 32,
+        p: 4,
+        log_range: 0,
+    };
+    let _p = &Rc::new(RefCell::new(parameters.clone()));
+    let m = Polynomial::new(vec![0, 0, 0, 0], _p);
+
+    let mut secret = RLWE::new(_p);
+
+    for i in 0..100 {
+        let c = RLWE::encrypt(&secret.public, &m);
+        let p = secret.decrypt(&c);
+        if m != p {
+            println!("FAILED on {i}, {m}, {p}");
+            return;
+        }
+    }
+}
 fn main() {
     for i in 2..300 {
         if (i % 40 == 0) {
@@ -366,6 +391,7 @@ fn main() {
     println!("PK BELOW------");
     p_q_gradient();
     example_pk();
+    broken_example();
     return;
     //p_q_gradient();
     //timing_test();
