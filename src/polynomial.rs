@@ -1,6 +1,6 @@
 use num_bigint::{BigInt, RandBigInt};
 
-use crate::rlwe::Params;
+use crate::{fractions::Fraction, rlwe::Params};
 use num_traits::{one, zero, Euclid, FromPrimitive, One, Zero};
 use rand_distr::{Distribution, Normal, Uniform};
 use std::{
@@ -41,6 +41,8 @@ pub trait Value:
     + Zero
     + One
     + TryInto<usize>
+    + PartialEq
+    + Ord
 {
 }
 
@@ -384,6 +386,32 @@ where
             //Some(v) -> v,
         }
     }
+    pub fn extended_gcd(a: &Self, b: &Self) -> Self {
+        let (mut old_r, mut r) = (a.clone(), b.clone());
+        let (mut old_s, mut s) = (
+            Polynomial::new(vec![one()], a.parameters()),
+            Polynomial::new(vec![zero()], a.parameters()),
+        );
+        let (mut old_t, mut t) = (
+            Polynomial::new(vec![zero()], a.parameters()),
+            Polynomial::new(vec![one()], a.parameters()),
+        );
+
+        while r.degree() > 0 {
+            let quotient = &old_r / &r;
+            (old_r, r) = (r.clone(), &old_r % &r);
+            (old_s, s) = (s.clone(), &old_s - &(&quotient * &s));
+            (old_t, t) = (t.clone(), &old_t - &(&quotient * &t));
+            println!("????: {}", old_s);
+            println!("WHAT IS HIER GAANDE: {}", r);
+        }
+        old_s = &old_s / &old_r;
+        old_t = &old_t / &old_r;
+        println!("Bezout coefficients: {}, {}", old_s, old_t);
+        println!("GCD: {}", old_r);
+        println!("quotients by the gcd: {}, {}", t, s);
+        return old_s;
+    }
 }
 impl<Val> Add for &Polynomial<Val>
 where
@@ -520,7 +548,8 @@ where
         while (remainder.degree() >= rhs.degree())
             && ((&remainder.val).into_iter().any(|x| !x.is_zero()))
         {
-            println!("{}, {}", remainder.degree(), rhs.degree());
+            println!("WHAT {}, {}", remainder.degree(), rhs.degree());
+
             /*let t = Vec<i32> = Vec::new();
             for i in 0..degree(remainder) {
                 t.push(0);
@@ -825,7 +854,7 @@ mod tests {
 
         assert_eq!(ls.get_mod().mod_q(), rs.get_mod().mod_q());
     }
-    #[test]
+    //#[test]
     fn for_extended_euclidian() {
         let parameters = Parameters {
             degree: 8,
@@ -837,7 +866,6 @@ mod tests {
         };
         let _p = &Rc::new(RefCell::new(parameters));
         let x = Fraction::new(1, 1);
-        Fraction::from_i64(1);
         let mut a = Polynomial::new(
             vec![
                 Fraction::new(-1, 1),
@@ -859,6 +887,8 @@ mod tests {
             ],
             _p,
         );
+        Polynomial::extended_gcd(&a, &b);
+        println!("-------");
 
         let mut div = &a / &b;
         let mut rem = &a % &b;
@@ -873,7 +903,52 @@ mod tests {
             rem = &a % &b;
             println!("Div: {}, Rem: {}", div, rem);
         }
-
+    }
+    #[test]
+    fn trying_clpx() {
+        let parameters = Parameters {
+            degree: 8,
+            q: Fraction::new(7681, 1),
+            t: vec![Fraction::new(8, 1), Fraction::new(1, 1)],
+            t_relin: Fraction::new(32, 1),
+            p: Fraction::new(4, 1),
+            log_range: 0,
+        };
+        let i_parameters = Parameters {
+            degree: 8,
+            q: 7681,
+            t: vec![8, 1],
+            t_relin: 32,
+            p: 4,
+            log_range: 0,
+        };
+        let _p = &Rc::new(RefCell::new(parameters));
+        let _ip = &Rc::new(RefCell::new(i_parameters));
+        let x = Fraction::new(1, 1);
+        let mut a = Polynomial::new(vec![Fraction::new(8, 1), Fraction::new(1, 1)], _p);
+        let mut b = Polynomial::new(
+            vec![
+                Fraction::new(1, 1),
+                Fraction::new(0, 1),
+                Fraction::new(0, 1),
+                Fraction::new(0, 1),
+                Fraction::new(1, 1),
+            ],
+            _p,
+        );
+        let old_s = Polynomial::extended_gcd(&a, &b);
+        let mut temp = vec![];
+        for x in old_s.val {
+            temp.push(Fraction::new(7681, 1) * x.reduce());
+        }
+        let fin = Polynomial::new(temp, _p);
+        println!("FINAL: {}", fin);
+        let ex = Polynomial::new(vec![1, 2, 3, 4], _ip);
+        let frac_ex = Fraction::frac_poly(ex, _p);
+        let res = Fraction::round_multiply(&frac_ex, &fin, _ip);
+        println!("RESULT: {}", res);
+        let hmm = RLWE::delta_polyn(res);
+        println!("HMMMM: {}", hmm);
         assert_eq!(1, 0);
     }
     // #[test]

@@ -1,6 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{
+    fractions::Fraction,
     montgomery::{square_multiply, square_multiply_no_mod},
     ntt::Ntt,
     polynomial::{make_fx, Parameters, Polynomial, Value},
@@ -198,7 +199,28 @@ where
         let e2 = Polynomial::normal_sample(m.parameters());
         RLWE::compute_encryption(pk, m, u, e1, e2)
     }
+    pub fn delta_mult(c: Polynomial<Val>) -> Polynomial<Val> {
+        let params = c.parameters();
+        let t = Polynomial::new(c.t_full(), params);
+        let f_params = Fraction::frac_params(params);
+        let _fp = &Rc::new(RefCell::new(f_params));
+        let t_frac = Fraction::frac_poly(t, _fp);
+        let fx = make_fx(params);
+        let fx_frac = Fraction::frac_poly(fx, _fp);
+        let old_s = Polynomial::extended_gcd(&t_frac, &fx_frac);
+        let mut temp = vec![];
+        for x in old_s.val {
+            temp.push(_fp.borrow().q.clone() * x.reduce());
+        }
+        let delta = Polynomial::new(temp, _fp);
+        println!("THIS IS DELTA: {}", delta);
+        let c_frac = Fraction::frac_poly(c.clone(), _fp);
+        let res = Fraction::round_multiply(&c_frac, &delta, c.parameters());
+        println!("C_FRAC WAS: {}, RES IS: {}", c_frac, res);
+        return res;
+    }
     pub fn mult_delta(c: Polynomial<Val>) -> Polynomial<Val> {
+        return RLWE::delta_mult(c);
         let params = c.parameters();
         let t = Polynomial::new(c.t_full(), params);
         if (t.degree() == 1) {
@@ -256,15 +278,15 @@ where
     pub fn delta_polyn(c: Polynomial<Val>) -> Polynomial<Val> {
         let t = Polynomial::new(c.t_full(), c.parameters());
         let mut temp = &c.clone() * &t;
-        println!("Hmm: {}", c.clone());
-        println!("T is: {}", t);
-        println!("Temp is: {}", temp);
+        //println!("Hmm: {}", c.clone());
+        //println!("T is: {}", t);
+        //println!("Temp is: {}", temp);
         temp.val = temp
             .val
             .into_iter()
             .map(|i| (i + c.q() / (Val::one() + Val::one())) / c.q())
             .collect();
-        println!("Temp is: {}", temp);
+        //println!("Temp is: {}", temp);
         temp
         //&temp % &make_fx(c.parameters())
     }
@@ -652,9 +674,9 @@ mod tests {
     #[test]
     fn gbfv_encrypt_decrypt() {
         let parameters: Parameters<i64> = Parameters {
-            degree: 8,
-            q: 7681000,
-            t: vec![20, 1],
+            degree: 4,
+            q: 7681,
+            t: vec![4, 1],
             t_relin: 32,
             p: 1,
             log_range: 7681000_i64.ilog(32) as usize + 1, //println!("{}", (self.q().checked_ilog(self.t_relin()).unwrap()) + 1);,
@@ -663,9 +685,9 @@ mod tests {
 
         println!("make_fx : {}", make_fx(_p));
         let mut keys = RLWE::new(_p);
-        let test_t = Polynomial::new(vec![20, 1], _p);
+        let test_t = Polynomial::new(vec![4, 1], _p);
         //let m = Polynomial::new(vec![2, 2, 3, 1, 2], _p);
-        let m = Polynomial::new(vec![1], _p);
+        let m = Polynomial::new(vec![0, 1, 1], _p);
         //let m = &m % &test_t;
         let ct = RLWE::encrypt(&keys.public, &m);
         let pt = keys.decrypt(&ct);

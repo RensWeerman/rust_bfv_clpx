@@ -1,89 +1,167 @@
 use std::{
     fmt::Display,
     ops::{Add, Div, Mul, Rem, Sub},
+    rc::Rc,
 };
 
 use num_traits::{Euclid, FromPrimitive, One, ToPrimitive, Zero};
 
-use crate::polynomial::{Sampling, Value};
+use crate::{
+    polynomial::{Parameters, Polynomial, Sampling, Value},
+    rlwe::Params,
+};
 
 #[derive(Clone, Debug)]
-pub struct Fraction {
-    num: i64,
-    den: i64,
+pub struct Fraction<Val> {
+    num: Val,
+    den: Val,
 }
 
-impl Fraction {
-    pub fn new(num: i64, den: i64) -> Self {
+impl<Val> Fraction<Val>
+where
+    Val: Value,
+{
+    pub fn new(num: Val, den: Val) -> Self {
         Self { num, den }
     }
-    fn reduce(&self) -> Self {
+    pub fn frac_params(parameters: &Params<Val>) -> Parameters<Fraction<Val>> {
+        let p = parameters.borrow();
+        let mut temp = vec![];
+        for x in p.t.clone() {
+            temp.push(Fraction::new(x, Val::one()));
+        }
+        return Parameters {
+            degree: 4,
+            q: Fraction::new(p.q.clone(), Val::one()),
+            t: temp,
+            t_relin: Fraction::new(p.t_relin.clone(), Val::one()),
+            p: Fraction::new(p.p.clone(), Val::one()),
+            log_range: 7681_i64.ilog(32) as usize + 1,
+        };
+    }
+    pub fn frac_poly(
+        poly: Polynomial<Val>,
+        parameters: &Params<Fraction<Val>>,
+    ) -> Polynomial<Fraction<Val>> {
+        let mut temp = vec![];
+        for term in poly.val {
+            let fraction = Fraction::new(term, Val::one());
+            temp.push(fraction);
+        }
+        Polynomial::new(temp, parameters)
+    }
+    pub fn convert(&self) -> Val {
+        self.num.clone() / self.den.clone()
+    }
+    pub fn round_multiply(
+        a: &Polynomial<Self>,
+        b: &Polynomial<Self>,
+        parameters: &Params<Val>,
+    ) -> Polynomial<Val> {
+        let c = a * b;
+        let mut temp = vec![];
+        for term in c.val {
+            let x = term.convert();
+            temp.push(x);
+        }
+        Polynomial::new(temp, parameters)
+    }
+    pub fn reduce(&self) -> Self {
         //https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
-        let mut a = self.num;
-        let mut b = self.den;
-        while b != 0 {
-            let t = b;
+        let mut a = self.num.clone();
+        let mut b = self.den.clone();
+        while b != Val::zero() {
+            let t = b.clone();
             b = a % b;
             a = t;
         }
-        return Fraction::new(self.num / a, self.den / a);
+        return Fraction::new(self.num.clone() / a.clone(), self.den.clone() / a);
     }
-    fn inverse(&self, q: i64) -> i64 {
+    fn inverse(&self, q: Val) -> Val {
         //https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
-        let mut t = 0;
-        let mut newt = 1;
-        let mut r = q;
-        let mut newr = self.den;
+        let mut t = Val::zero();
+        let mut newt = Val::one();
+        let mut r = q.clone();
+        let mut newr = self.den.clone();
 
-        while newr != 0 {
+        while newr != Val::zero() {
             let quotient = r.clone() / newr.clone();
             (t, newt) = (newt.clone(), t - quotient.clone() * newt);
             (r, newr) = (newr.clone(), r - quotient * newr);
         }
-        if r > 1 {
-            return 0;
+        if r > Val::one() {
+            return Val::zero();
         }
-        if t < 0 {
+        if t < Val::zero() {
             t = t + q;
         }
-        return t * self.num;
+        return t * self.num.clone();
     }
 }
 
-impl Display for Fraction {
+impl<Val> Display for Fraction<Val>
+where
+    Val: Value,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}/{}", self.num, self.den)
     }
 }
 
-impl PartialOrd for Fraction {
+impl<Val> PartialOrd for Fraction<Val>
+where
+    Val: Value,
+{
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        return Some((self.num * other.den).cmp(&(other.num * self.den)));
+        return Some(
+            (self.num.clone() * other.den.clone()).cmp(&(other.num.clone() * self.den.clone())),
+        );
     }
 }
-impl PartialEq for Fraction {
+impl<Val> PartialEq for Fraction<Val>
+where
+    Val: Value,
+{
     fn eq(&self, other: &Self) -> bool {
         let a = self.reduce();
         let b = other.reduce();
         return (a.num == b.num) && (a.den == b.den);
     }
 }
-impl Sub for Fraction {
-    type Output = Fraction;
+impl<Val> Sub for Fraction<Val>
+where
+    Val: Value,
+{
+    type Output = Fraction<Val>;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        Fraction::new(self.num * rhs.den - rhs.num * self.den, self.den * rhs.den)
+        Fraction::new(
+            self.num * rhs.den.clone() - rhs.num * self.den.clone(),
+            self.den * rhs.den,
+        )
     }
 }
-impl Add for Fraction {
-    type Output = Fraction;
+impl<Val> Add for Fraction<Val>
+where
+    Val: Value,
+{
+    type Output = Fraction<Val>;
 
     fn add(self, rhs: Self) -> Self::Output {
-        Fraction::new(self.num * rhs.den + rhs.num * self.den, self.den * rhs.den)
+        //println!("{}, {}", self, rhs);
+        let temp = Fraction::new(
+            self.num * rhs.den.clone() + rhs.num * self.den.clone(),
+            self.den * rhs.den,
+        );
+        temp.reduce();
+        temp
     }
 }
 
-impl Euclid for Fraction {
+impl<Val> Euclid for Fraction<Val>
+where
+    Val: Value,
+{
     fn div_euclid(&self, v: &Self) -> Self {
         return self.clone() % v.clone();
     }
@@ -93,91 +171,127 @@ impl Euclid for Fraction {
     }
 }
 
-impl Div for Fraction {
-    type Output = Fraction;
+impl<Val> Div for Fraction<Val>
+where
+    Val: Value,
+{
+    type Output = Fraction<Val>;
 
     fn div(self, rhs: Self) -> Self::Output {
-        Fraction::new(self.num * rhs.den, self.den * rhs.num)
+        let temp = Fraction::new(self.num * rhs.den, self.den * rhs.num);
+        temp.reduce();
+        temp
     }
 }
 
-impl Mul for Fraction {
-    type Output = Fraction;
+impl<Val> Mul for Fraction<Val>
+where
+    Val: Value,
+{
+    type Output = Fraction<Val>;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        Fraction::new(self.num * rhs.num, self.den * rhs.den)
+        let temp = Fraction::new(self.num * rhs.num, self.den * rhs.den);
+        temp.reduce();
+        temp
     }
 }
 
-impl Rem for Fraction {
-    type Output = Fraction;
+impl<Val> Rem for Fraction<Val>
+where
+    Val: Value,
+{
+    type Output = Fraction<Val>;
 
     fn rem(self, rhs: Self) -> Self::Output {
-        let mut t = 0;
-        let mut newt = 1;
-        let mut r = rhs.num;
+        let mut t = Val::zero();
+        let mut newt = Val::one();
+        let mut r = rhs.num.clone();
         let mut newr = self.den;
 
-        while newr != 0 {
+        while newr != Val::zero() {
             let quotient = r.clone() / newr.clone();
             (t, newt) = (newt.clone(), t - quotient.clone() * newt);
             (r, newr) = (newr.clone(), r - quotient * newr);
         }
-        if r > 1 {
-            return Fraction::new(0, 1);
+        if r > Val::one() {
+            return Fraction::new(Val::zero(), Val::one());
         }
-        if t < 0 {
+        if t < Val::zero() {
             t = t + rhs.num;
         }
-        return Fraction::new(t * self.num, 1);
+        return Fraction::new(t * self.num, Val::one());
     }
 }
 
-impl FromPrimitive for Fraction {
+impl<Val> FromPrimitive for Fraction<Val>
+where
+    Val: Value,
+{
     fn from_i64(n: i64) -> Option<Self> {
-        Some(Fraction::new(n, 1))
+        return None;
+        //Some(Fraction::new(n.try_into().unwrap(), Val::one()))
     }
 
     fn from_u64(n: u64) -> Option<Self> {
-        Some(Fraction::new(n.to_i64().unwrap(), 1))
+        None
+        //Some(Fraction::new(n.try_into().unwrap(), 1))
     }
 }
 
-impl One for Fraction {
+impl<Val> One for Fraction<Val>
+where
+    Val: Value,
+{
     fn one() -> Self {
-        Fraction::new(1, 1)
+        Fraction::new(Val::one(), Val::one())
     }
 }
 
-impl Zero for Fraction {
+impl<Val> Zero for Fraction<Val>
+where
+    Val: Value,
+{
     fn zero() -> Self {
-        Fraction::new(0, 1)
+        Fraction::new(Val::zero(), Val::one())
     }
 
     fn is_zero(&self) -> bool {
-        self.num == 0
+        self.num == Val::zero()
     }
 }
 
-impl Sampling for Fraction {
-    type Value = Fraction;
+impl<Val> Sampling for Fraction<Val>
+where
+    Val: Value,
+{
+    type Value = Fraction<Val>;
 
     fn normal_sample(parameters: Self::Value, size: usize) -> Vec<Self::Value> {
-        vec![Fraction::new(1, 1)]
+        vec![Fraction::new(Val::one(), Val::one())]
     }
 
     fn uniform_sample(parameters: Self::Value, size: usize) -> Vec<Self::Value> {
-        vec![Fraction::new(1, 1)]
+        vec![Fraction::new(Val::one(), Val::one())]
     }
 }
 
-impl From<Fraction> for usize {
-    fn from(value: Fraction) -> Self {
-        (value.num / value.den).to_usize().unwrap()
+impl<Val> From<Fraction<Val>> for usize {
+    fn from(value: Fraction<Val>) -> Self {
+        1
     }
 }
+impl<Val> Ord for Fraction<Val>
+where
+    Val: Value,
+{
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        return (self.num.clone() * other.den.clone()).cmp(&(other.num.clone() * self.den.clone()));
+    }
+}
+impl<Val> Eq for Fraction<Val> where Val: Value {}
 
-impl Value for Fraction {}
+impl<Val> Value for Fraction<Val> where Val: Value {}
 
 #[cfg(test)]
 mod tests {
@@ -209,6 +323,12 @@ mod tests {
         let mut frac = Fraction::new(1, 532);
         let inverse = frac.inverse(639);
         assert_eq!(inverse, 424);
+    }
+    #[test]
+    fn big_test_inv() {
+        let mut frac = Fraction::new(1, -160001);
+        let inverse = frac.inverse(7681);
+        assert_eq!(inverse, 3421);
     }
 
     #[test]
