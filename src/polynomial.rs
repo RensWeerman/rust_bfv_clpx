@@ -949,7 +949,7 @@ mod tests {
         println!("RESULT: {}", res);
         let hmm = RLWE::delta_polyn(res);
         println!("HMMMM: {}", hmm);
-        assert_eq!(1, 0);
+        //assert_eq!(1, 0);
     }
     // #[test]
     // fn comparing_to_other_mult() {

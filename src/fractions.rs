@@ -135,10 +135,15 @@ where
     type Output = Fraction<Val>;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        Fraction::new(
+        if rhs.is_zero() {
+            return self;
+        }
+        let temp = Fraction::new(
             self.num * rhs.den.clone() - rhs.num * self.den.clone(),
             self.den * rhs.den,
-        )
+        );
+        temp.reduce();
+        temp
     }
 }
 impl<Val> Add for Fraction<Val>
@@ -148,7 +153,10 @@ where
     type Output = Fraction<Val>;
 
     fn add(self, rhs: Self) -> Self::Output {
-        //println!("{}, {}", self, rhs);
+        println!("{}, {}", self, rhs);
+        if rhs.is_zero() {
+            return self;
+        }
         let temp = Fraction::new(
             self.num * rhs.den.clone() + rhs.num * self.den.clone(),
             self.den * rhs.den,

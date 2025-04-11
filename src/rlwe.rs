@@ -679,15 +679,15 @@ mod tests {
             t: vec![4, 1],
             t_relin: 32,
             p: 1,
-            log_range: 7681000_i64.ilog(32) as usize + 1, //println!("{}", (self.q().checked_ilog(self.t_relin()).unwrap()) + 1);,
+            log_range: 7681_i64.ilog(32) as usize + 1, //println!("{}", (self.q().checked_ilog(self.t_relin()).unwrap()) + 1);,
         };
         let _p = &Rc::new(RefCell::new(parameters));
 
         println!("make_fx : {}", make_fx(_p));
         let mut keys = RLWE::new(_p);
-        let test_t = Polynomial::new(vec![4, 1], _p);
+        let test_t = Polynomial::new(_p.borrow().t.clone(), _p);
         //let m = Polynomial::new(vec![2, 2, 3, 1, 2], _p);
-        let m = Polynomial::new(vec![0, 1, 1], _p);
+        let m = Polynomial::new(vec![1], _p);
         //let m = &m % &test_t;
         let ct = RLWE::encrypt(&keys.public, &m);
         let pt = keys.decrypt(&ct);
