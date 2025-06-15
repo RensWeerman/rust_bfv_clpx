@@ -351,7 +351,6 @@ where
         //res.set_back()
     }
     pub fn old_mul(&self, rhs: &Self) -> Self {
-        return self * rhs;
         let mut c = Vec::new();
         let zero = Val::zero();
         for i in 0..(self.degree() + rhs.degree() + 1) {
@@ -445,7 +444,7 @@ where
         //return self.old_mul(rhs);
         let degree = self.parameters().borrow().degree;
         let q = self.parameters().borrow().q.clone();
-        let q_2 = (q.clone() * q) / (Val::one() + Val::one() + Val::one());
+        let q_2 = q; //(q.clone() * q) / (Val::one() + Val::one() + Val::one());
         let psi = &self.parameters.borrow().root.clone();
         if (psi == &Val::zero()) {
             let psi = &Ntt::second_primitive_root(&q_2, degree);
