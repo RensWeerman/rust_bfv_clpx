@@ -366,6 +366,7 @@ mod tests {
             t_relin: 32,
             p: 4,
             log_range: 0,
+            root: 0,
         };
         let _p = &Rc::new(RefCell::new(params));
 
@@ -412,7 +413,6 @@ mod tests {
             let n = i.rem_euclid(4);
             let val_1 = omega.pow(n as u32).rem_euclid(q);
             let val_2 = m_ladder(omega, n as i64, q as i64);
-            println!("{}, {}", val_1, val_2);
             assert_eq!(val_1, val_2);
         }
     }
@@ -551,7 +551,7 @@ mod tests {
         let b = Polynomial::new(vec![5, 6, 7, 8], _p);
         let ls = Ntt::ntt_mult(a.clone(), b.clone(), q, psi);
         print_vec(&(&a * &b).val);
-        let rs = (&a * &b).get_mod().mod_q();
+        let rs = (&a.old_mul(&b)).get_mod().mod_q();
         print_vec(&ls.val);
         print_vec(&rs.val);
         assert_eq!(ls, rs);

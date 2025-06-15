@@ -26,6 +26,7 @@ pub struct Parameters<Val> {
     pub t_relin: Val,
     pub p: Val,
     pub log_range: usize,
+    pub root: Val,
 }
 
 pub trait Value:
@@ -350,6 +351,7 @@ where
         //res.set_back()
     }
     pub fn old_mul(&self, rhs: &Self) -> Self {
+        return self * rhs;
         let mut c = Vec::new();
         let zero = Val::zero();
         for i in 0..(self.degree() + rhs.degree() + 1) {
@@ -400,8 +402,10 @@ where
         while r.degree() > 0 {
             let quotient = &old_r / &r;
             (old_r, r) = (r.clone(), &old_r % &r);
-            (old_s, s) = (s.clone(), &old_s - &(&quotient * &s));
-            (old_t, t) = (t.clone(), &old_t - &(&quotient * &t));
+            // (old_s, s) = (s.clone(), &old_s - &(&quotient * &s));
+            // (old_t, t) = (t.clone(), &old_t - &(&quotient * &t));
+            (old_s, s) = (s.clone(), &old_s - &(&quotient.old_mul(&s)));
+            (old_t, t) = (t.clone(), &old_t - &(&quotient.old_mul(&t)));
             println!("????: {}", old_s);
             println!("WHAT IS HIER GAANDE: {}", r);
         }
@@ -438,12 +442,16 @@ where
     type Output = Polynomial<Val>;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        self.old_mul(rhs)
-        // let degree = self.parameters().borrow().degree;
-        // let q = self.parameters().borrow().q.clone();
-        // let psi = &Ntt::second_primitive_root(&q, degree);
-        // let res = Ntt::ntt_mult(self.clone(), rhs.clone(), &q, psi);
-        // res.set_back()
+        //return self.old_mul(rhs);
+        let degree = self.parameters().borrow().degree;
+        let q = self.parameters().borrow().q.clone();
+        let q_2 = (q.clone() * q) / (Val::one() + Val::one() + Val::one());
+        let psi = &self.parameters.borrow().root.clone();
+        if (psi == &Val::zero()) {
+            let psi = &Ntt::second_primitive_root(&q_2, degree);
+        }
+        let res = Ntt::ntt_mult(self.clone(), rhs.clone(), &q_2, psi);
+        res.set_back()
     }
 }
 impl<Val> Neg for &Polynomial<Val>
@@ -486,51 +494,27 @@ where
     fn rem(self, rhs: Self) -> Self::Output {
         let mut quotient = Polynomial::new(vec![], self.parameters());
         let mut remainder = Polynomial::new(self.val.clone(), self.parameters());
-        //println!("WHAT {}, {}", remainder.degree(), rhs.degree());
-        /*println!(
-            "Wattisdis {}",
-            ((&remainder.val).into_iter().any(|x| *x != zero()))
-        );*/
         while (remainder.degree() >= rhs.degree())
             && ((&remainder.val).into_iter().any(|x| *x != Val::zero()))
         {
-            /*println!("EEEE");
-            print_vec(&remainder.val);
-            print_vec(&rhs.val);*/
             /*
             We need to get the leading terms of both the remainder, and the divisor. Then we
             divide them, to get the number for our quotient. We do this by getting both the
             coefficients and the degree.
             */
-            //print_vec(&remainder);
             let rem_c = remainder.val.get(remainder.degree() - 1).unwrap();
-            /*println!(
-                "Rem_c should not be zero, but it is: {}. Degree is: {}. below is entire poly:",
-                rem_c,
-                remainder.degree() - 1,
-            );
-            print_vec(&remainder.val);*/
             let div_c = rhs.val.get(rhs.degree() - 1).unwrap();
             let t = single_term(
                 self.parameters(),
                 rem_c.clone() / div_c.clone(),
                 remainder.degree() - rhs.degree(),
             );
-            //println!("{}, {}", rem_c, div_c);
             if rem_c.clone() / div_c.clone() == Val::zero() {
-                //println!("??");
                 return remainder;
             }
             quotient = &quotient + &t;
-            //print!("%Quotient: ");
-            //print_vec(&quotient.val);
             quotient = &quotient % &make_fx(self.parameters());
-            /*print!("%remainder and other stuff: ");
-            print_vec(&remainder.val);
-            print_vec(&(&t * &rhs).val);*/
             remainder = &remainder - &(&t.old_mul(&rhs));
-            /*print!("%remainder: ");
-            print_vec(&remainder.val);*/
             remainder = &remainder % &make_fx(self.parameters());
         }
         remainder
@@ -721,6 +705,7 @@ mod tests {
             t_relin: 32,
             p: 4,
             log_range: 0,
+            root: 0,
         };
         let _p = &Rc::new(RefCell::new(parameters));
         let p1 = Polynomial::new(vec![1, 2, 3, 4], _p);
@@ -738,6 +723,7 @@ mod tests {
             t_relin: 32,
             p: 4,
             log_range: 0,
+            root: 0,
         };
         let _p = &Rc::new(RefCell::new(parameters));
 
@@ -763,6 +749,7 @@ mod tests {
             t_relin: 32,
             p: 4,
             log_range: 0,
+            root: 0,
         };
         let _p = &Rc::new(RefCell::new(parameters));
         let right = Polynomial::new(vec![5, 16, 34, 60, 61, 52, 32], _p);
@@ -780,6 +767,7 @@ mod tests {
             t_relin: BigInt::try_from(32).unwrap(),
             p: BigInt::try_from(4).unwrap(),
             log_range: 0,
+            root: BigInt::try_from(0).unwrap(),
         };
         let _p = &Rc::new(RefCell::new(parameters));
         // let p1 = Polynomial::new(
@@ -830,6 +818,7 @@ mod tests {
             t_relin: 32,
             p: 4,
             log_range: 0,
+            root: 0,
         };
         let _p = &Rc::new(RefCell::new(parameters));
         let p1 = Polynomial::new(vec![1, 2, 3, 4], _p);
@@ -863,6 +852,7 @@ mod tests {
             t_relin: Fraction::from_i64(32).unwrap(),
             p: Fraction::from_i64(4).unwrap(),
             log_range: 0,
+            root: Fraction::from_i64(0).unwrap(),
         };
         let _p = &Rc::new(RefCell::new(parameters));
         let x = Fraction::new(1, 1);
@@ -913,6 +903,7 @@ mod tests {
             t_relin: Fraction::new(32, 1),
             p: Fraction::new(4, 1),
             log_range: 0,
+            root: Fraction::new(0, 0),
         };
         let i_parameters = Parameters {
             degree: 8,
@@ -921,6 +912,7 @@ mod tests {
             t_relin: 32,
             p: 4,
             log_range: 0,
+            root: 0,
         };
         let _p = &Rc::new(RefCell::new(parameters));
         let _ip = &Rc::new(RefCell::new(i_parameters));

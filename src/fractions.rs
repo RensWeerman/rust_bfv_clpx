@@ -37,6 +37,7 @@ where
             t_relin: Fraction::new(p.t_relin.clone(), Val::one()),
             p: Fraction::new(p.p.clone(), Val::one()),
             log_range: 7681_i64.ilog(32) as usize + 1,
+            root: Fraction::new(Val::zero(), Val::zero()),
         };
     }
     pub fn frac_poly(
@@ -51,14 +52,26 @@ where
         Polynomial::new(temp, parameters)
     }
     pub fn convert(&self) -> Val {
-        self.num.clone() / self.den.clone()
+        if self.num < Val::zero() {
+            (self.num.clone() - (self.den.clone() / (Val::one() + Val::one()))) / self.den.clone()
+        } else {
+            (self.num.clone() + (self.den.clone() / (Val::one() + Val::one()))) / self.den.clone()
+        }
+    }
+    pub fn flatten(&mut self) {
+        println!("BEFORE, {}, {}", self.num.clone(), self.den.clone());
+        let times = self.convert();
+        let sub = times * self.den.clone();
+        self.num = self.num.clone() - sub;
+        println!("HOE KAN DIT {} {}", self.num.clone(), self.den.clone())
     }
     pub fn round_multiply(
         a: &Polynomial<Self>,
         b: &Polynomial<Self>,
         parameters: &Params<Val>,
     ) -> Polynomial<Val> {
-        let c = a * b;
+        //let c = a * b;
+        let c = a.old_mul(b);
         let mut temp = vec![];
         for term in c.val {
             let x = term.convert();
@@ -70,6 +83,9 @@ where
         //https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
         let mut a = self.num.clone();
         let mut b = self.den.clone();
+        if a.is_zero() {
+            return Fraction::new(Val::zero(), Val::one());
+        }
         while b != Val::zero() {
             let t = b.clone();
             b = a % b;
@@ -142,8 +158,7 @@ where
             self.num * rhs.den.clone() - rhs.num * self.den.clone(),
             self.den * rhs.den,
         );
-        temp.reduce();
-        temp
+        temp.reduce()
     }
 }
 impl<Val> Add for Fraction<Val>
@@ -153,16 +168,11 @@ where
     type Output = Fraction<Val>;
 
     fn add(self, rhs: Self) -> Self::Output {
-        println!("{}, {}", self, rhs);
-        if rhs.is_zero() {
-            return self;
-        }
         let temp = Fraction::new(
             self.num * rhs.den.clone() + rhs.num * self.den.clone(),
             self.den * rhs.den,
         );
-        temp.reduce();
-        temp
+        temp.reduce()
     }
 }
 
@@ -187,8 +197,7 @@ where
 
     fn div(self, rhs: Self) -> Self::Output {
         let temp = Fraction::new(self.num * rhs.den, self.den * rhs.num);
-        temp.reduce();
-        temp
+        temp.reduce()
     }
 }
 
@@ -200,8 +209,7 @@ where
 
     fn mul(self, rhs: Self) -> Self::Output {
         let temp = Fraction::new(self.num * rhs.num, self.den * rhs.den);
-        temp.reduce();
-        temp
+        temp.reduce()
     }
 }
 

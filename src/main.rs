@@ -19,6 +19,7 @@ use std::cell::RefCell;
 use std::fmt::Write;
 use std::fs;
 use std::rc::Rc;
+use std::str::FromStr;
 use std::time::Instant;
 use std::usize;
 
@@ -32,6 +33,7 @@ fn decrypt_vs_3decrypt(t: i64) {
         t_relin: 32,
         p: 4,
         log_range: 768100_i64.ilog(32) as usize + 1, //println!("{}", (self.q().checked_ilog(self.t_relin()).unwrap()) + 1);,
+        root: 0,
     };
     let _p = &Rc::new(RefCell::new(parameters));
     let m1 = Polynomial::uniform_sample(_p).mod_t();
@@ -65,6 +67,7 @@ fn example_decrypt() {
         t_relin: 32,
         p: 4,
         log_range: 0,
+        root: 0,
     };
     let _p = &Rc::new(RefCell::new(parameters));
 
@@ -93,6 +96,7 @@ fn example_encrypt() {
         t_relin: 32,
         p: 4,
         log_range: 0,
+        root: 0,
     };
     let _p = &Rc::new(RefCell::new(parameters));
 
@@ -129,6 +133,7 @@ fn example_pk() {
         t_relin: 32,
         p: 4,
         log_range: 0,
+        root: 0,
     };
     let _p = &Rc::new(RefCell::new(parameters));
     let a = Polynomial::new(vec![74, 15, 49, 86], _p);
@@ -200,6 +205,7 @@ fn p_q_gradient() {
         t_relin: 32,
         p: 4,
         log_range: 0,
+        root: 0,
     };
     let mut buf = String::new();
     for i in 1..(parameters.q) {
@@ -221,14 +227,45 @@ fn p_q_gradient() {
     )
     .expect("Unable to write file");
 }
-fn timing_test() {
+fn timing_addition() {
     let parameters: Parameters<BigInt> = Parameters {
-        degree: 32,
-        q: BigInt::try_from(1329227995784915872903807060280344576_i128).unwrap(),
-        t: vec![BigInt::try_from(536903681).unwrap()],
-        t_relin: BigInt::try_from(16).unwrap(),
+        degree: 16384,
+        q: BigInt::from_str("2707685248005711112098097238309689728616229107667371065645293317992434822133490690704680432116610806966309052648878173576364033").unwrap(),
+        t: vec![BigInt::try_from(65537).unwrap()],
+        t_relin: BigInt::try_from(256).unwrap(),
         p: BigInt::try_from(4).unwrap(),
         log_range: 0,
+        root: BigInt::from_str("160122687026568703260160820745333646557040369694442191388605703127148838809696464960419374948428326604331490224104058569398").unwrap(),
+    };
+    let _p = &Rc::new(RefCell::new(parameters));
+
+    let p1 = Polynomial::uniform_sample(_p).mod_t(); //Polynomial::new(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], _p);
+    let p2 = Polynomial::uniform_sample(_p).mod_t(); //Polynomial::new(vec![3, 2, 1, 4, 5, 6, 7, 8, 9, 10, 11, 12], _p);
+    let p3 = Polynomial::uniform_sample(_p).mod_t(); //Polynomial::new(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], _p);
+
+    let mut secret = RLWE::new(_p);
+    //let rlk = secret.evaluate_key_gen();
+
+    let c1 = RLWE::encrypt(&secret.public, &p1);
+    let c2 = RLWE::encrypt(&secret.public, &p2);
+
+    let start = Instant::now();
+
+    for _ in 0..10 {
+        let _ = RLWE::add_ct(&c1, &c2);
+    }
+    let duration = start.elapsed().as_micros();
+    println!("Time taken for Addition: {:?}", duration);
+}
+fn timing_multiplication() {
+    let parameters: Parameters<BigInt> = Parameters {
+        degree: 32,
+        q: BigInt::from_str("1532495540865518635130821056977027158796330141975560193").unwrap(),
+        t: vec![BigInt::try_from(65537).unwrap()],
+        t_relin: BigInt::try_from(256).unwrap(),
+        p: BigInt::try_from(4).unwrap(),
+        log_range: 0,
+        root: BigInt::from_str("354363855417910436849378356982599500396178680480945").unwrap(),
     };
     let _p = &Rc::new(RefCell::new(parameters));
 
@@ -241,23 +278,63 @@ fn timing_test() {
 
     let c1 = RLWE::encrypt(&secret.public, &p1);
     let c2 = RLWE::encrypt(&secret.public, &p2);
-    let c3 = RLWE::encrypt(&secret.public, &p3);
 
     let start = Instant::now();
 
-    let add_ct = RLWE::add_ct(&RLWE::add_ct(&c1, &c2), &c3);
-    //let add_ct = c1.clone();
-
-    let mult_ct_1_2 = RLWE::relin_ct(RLWE::mult_ct(&c1, &c2), rlk.clone());
-    let mult_ct = RLWE::relin_ct(RLWE::mult_ct(&mult_ct_1_2, &c3), rlk);
-
-    let add_res = secret.decrypt(&add_ct);
-    let mult_res = secret.decrypt(&mult_ct);
+    for _ in 0..1 {
+        let temp = RLWE::mult_ct(&c1, &c2);
+        let _ = RLWE::relin_ct(temp, rlk.clone());
+    }
     let duration = start.elapsed().as_micros();
-    println!("Time taken for Timing Test: {:?}", duration);
-    print_vec(&(&p1 * &(&p2 * &p3)).get_mod().val);
-    //print_vec(&p1.val);
-    print_vec(&mult_res.val);
+    println!("Time taken for Multiplication: {:?}", duration);
+}
+
+fn timing_encryption() {
+    let parameters: Parameters<BigInt> = Parameters {
+        degree: 16384,
+        q: BigInt::from_str("2707685248005711112098097238309689728616229107667371065645293317992434822133490690704680432116610806966309052648878173576364033").unwrap(),
+        t: vec![BigInt::try_from(65537).unwrap()],
+        t_relin: BigInt::try_from(256).unwrap(),
+        p: BigInt::try_from(4).unwrap(),
+        log_range: 0,
+        root: BigInt::from_str("160122687026568703260160820745333646557040369694442191388605703127148838809696464960419374948428326604331490224104058569398").unwrap(),
+    };
+    let _p = &Rc::new(RefCell::new(parameters));
+
+    let p1 = Polynomial::uniform_sample(_p).mod_t();
+
+    let secret = RLWE::new(_p);
+
+    let start = Instant::now();
+    for _ in 0..10 {
+        let _ = RLWE::encrypt(&secret.public, &p1);
+    }
+    let duration = start.elapsed().as_micros();
+    println!("Time taken for encryption: {:?}", duration);
+}
+fn timing_decryption() {
+    let parameters: Parameters<BigInt> = Parameters {
+        degree: 16384,
+        q: BigInt::from_str("2707685248005711112098097238309689728616229107667371065645293317992434822133490690704680432116610806966309052648878173576364033").unwrap(),
+        t: vec![BigInt::try_from(65537).unwrap()],
+        t_relin: BigInt::try_from(256).unwrap(),
+        p: BigInt::try_from(4).unwrap(),
+        log_range: 0,
+        root: BigInt::from_str("160122687026568703260160820745333646557040369694442191388605703127148838809696464960419374948428326604331490224104058569398").unwrap(),
+    };
+    let _p = &Rc::new(RefCell::new(parameters));
+
+    let p1 = Polynomial::uniform_sample(_p).mod_t();
+
+    let mut secret = RLWE::new(_p);
+    //let rlk = secret.evaluate_key_gen();
+    let c1 = RLWE::encrypt(&secret.public, &p1);
+    let start = Instant::now();
+    for _ in 0..10 {
+        let _ = secret.decrypt(&c1);
+    }
+    let duration = start.elapsed().as_micros();
+    println!("Time taken for decryption: {:?}", duration);
 }
 
 fn test_iter_cooley_tukey_2() {
@@ -268,6 +345,7 @@ fn test_iter_cooley_tukey_2() {
         t_relin: 32,
         p: 4,
         log_range: 0,
+        root: 0,
     };
     let _p = &Rc::new(RefCell::new(parameters));
 
@@ -294,6 +372,7 @@ fn test_multiplying_speeds() {
         t_relin: 32,
         p: 4,
         log_range: 0,
+        root: 0,
     };
     let _p = &Rc::new(RefCell::new(parameters));
     let q = &_p.borrow().q;
@@ -328,6 +407,7 @@ fn testing_big_ints() {
         t_relin: BigInt::try_from(32).unwrap(),
         p: BigInt::try_from(4).unwrap(),
         log_range: 0,
+        root: BigInt::try_from(0).unwrap(),
     };
     let _p = &Rc::new(RefCell::new(parameters));
     let q = &_p.borrow().q.clone();
@@ -363,6 +443,7 @@ fn broken_example() {
         t_relin: 32,
         p: 4,
         log_range: 0,
+        root: 0,
     };
     let _p = &Rc::new(RefCell::new(parameters.clone()));
     let m = Polynomial::new(vec![0, 0, 0, 0], _p);
@@ -379,19 +460,23 @@ fn broken_example() {
     }
 }
 fn main() {
-    for i in 2..300 {
-        if (i % 40 == 0) {
-            decrypt_vs_3decrypt(i);
-        }
-    }
-    println!("ENCRYPT BELOW------");
-    example_encrypt();
-    println!("DECRYPT BELOW------");
-    example_decrypt();
-    println!("PK BELOW------");
-    p_q_gradient();
-    example_pk();
-    broken_example();
+    // for i in 2..300 {
+    //     if (i % 40 == 0) {
+    //         decrypt_vs_3decrypt(i);
+    //     }
+    // }
+    // println!("ENCRYPT BELOW------");
+    // example_encrypt();
+    // println!("DECRYPT BELOW------");
+    // example_decrypt();
+    // println!("PK BELOW------");
+    // p_q_gradient();
+    // example_pk();
+    // broken_example();
+    // timing_addition();
+    // timing_encryption();
+    // timing_decryption();
+    timing_multiplication();
     return;
     //p_q_gradient();
     //timing_test();
@@ -404,6 +489,7 @@ fn main() {
         t_relin: 32,
         p: 4,
         log_range: 0,
+        root: 0,
     };
     let _p = &Rc::new(RefCell::new(parameters));
     let secret = Polynomial::new(vec![0, 1, 1, 0], _p);
