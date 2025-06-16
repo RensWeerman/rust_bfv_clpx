@@ -4,7 +4,6 @@ use crate::{fractions::Fraction, rlwe::Params};
 use num_traits::{one, zero, Euclid, FromPrimitive, One, Zero};
 use rand_distr::{Distribution, Normal, Uniform};
 use std::{
-    cell::RefCell,
     cmp::max,
     fmt::Display,
     ops::{Add, Div, Mul, Neg, Rem, Sub},
@@ -13,7 +12,7 @@ use std::{
 #[derive(PartialEq, Debug, Clone)]
 pub struct Polynomial<Value> {
     pub val: Vec<Value>,
-    pub parameters: Rc<RefCell<Parameters<Value>>>,
+    pub parameters: Rc<Parameters<Value>>,
 }
 
 use crate::ntt::Ntt;
@@ -170,39 +169,33 @@ where
     }
     pub fn uniform_sample(parameters: &Params<Val>) -> Self {
         Polynomial {
-            val: Val::uniform_sample(
-                parameters.borrow().q.clone(),
-                parameters.borrow().degree as usize,
-            ),
+            val: Val::uniform_sample(parameters.q.clone(), parameters.degree as usize),
             parameters: Rc::clone(parameters),
         }
     }
     pub fn normal_sample(parameters: &Params<Val>) -> Self {
         Polynomial {
-            val: Val::normal_sample(
-                parameters.borrow().q.clone(),
-                parameters.borrow().degree as usize,
-            ),
+            val: Val::normal_sample(parameters.q.clone(), parameters.degree as usize),
             parameters: Rc::clone(parameters),
         }
     }
     pub fn t_relin(&self) -> Val {
-        return self.parameters.borrow().t_relin.clone();
+        return self.parameters.t_relin.clone();
     }
     pub fn q(&self) -> Val {
-        return self.parameters.borrow().q.clone();
+        return self.parameters.q.clone();
     }
     pub fn p(&self) -> Val {
-        return self.parameters.borrow().p.clone();
+        return self.parameters.p.clone();
     }
     pub fn t(&self) -> Val {
-        return self.parameters.borrow().t.clone().get(0).unwrap().clone();
+        return self.parameters.t.clone().get(0).unwrap().clone();
     }
     pub fn t_full(&self) -> Vec<Val> {
-        return self.parameters.borrow().t.clone();
+        return self.parameters.t.clone();
     }
     pub fn log_range(&self) -> usize {
-        return self.parameters.borrow().log_range.clone();
+        return self.parameters.log_range.clone();
     }
     pub fn parameters(&self) -> &Params<Val> {
         return &self.parameters;
@@ -285,13 +278,12 @@ where
     }
     pub fn get_mod(&self) -> Polynomial<Val> {
         let mut x = self % &make_fx(self.parameters());
-        x.val
-            .resize(self.parameters().borrow().degree as usize, Val::zero());
+        x.val.resize(self.parameters().degree as usize, Val::zero());
         x
     }
     pub fn set_back(&self) -> Polynomial<Val> {
         let mut c = Vec::new();
-        for i in 0..self.parameters().borrow().degree as usize {
+        for i in 0..self.parameters().degree as usize {
             let mut val = mod_coeff((self.val.get(i).unwrap_or(&Val::zero())).clone(), self.q());
             if val > self.q() / (Val::one() + Val::one()) {
                 val = val - self.q();
@@ -303,7 +295,7 @@ where
     }
     pub fn mod_q(&self) -> Polynomial<Val> {
         let mut c = Vec::new();
-        for i in 0..self.parameters().borrow().degree as usize {
+        for i in 0..self.parameters().degree as usize {
             c.push(mod_coeff(
                 (self.val.get(i).unwrap_or(&Val::zero())).clone(),
                 self.q(),
@@ -316,7 +308,7 @@ where
         let mut c = Vec::new();
         let t = &Polynomial::new(self.t_full(), self.parameters());
         if t.degree() == 1 {
-            for i in 0..self.parameters().borrow().degree as usize {
+            for i in 0..self.parameters().degree as usize {
                 c.push(mod_coeff(
                     (self.val.get(i).unwrap_or(&Val::zero())).clone(),
                     self.t(),
@@ -325,15 +317,14 @@ where
             return Polynomial::new(c, self.parameters());
         }
         let mut temp = &self.clone() % &Polynomial::new(self.t_full(), self.parameters());
-        temp.val
-            .truncate(self.parameters().borrow().degree as usize);
+        temp.val.truncate(self.parameters().degree as usize);
         println!("WHAT? {}", self);
         //c = rm_trailing_zeroes(c);
         Polynomial::new(temp.val, self.parameters())
     }
     pub fn mod_t_relin(&self) -> Polynomial<Val> {
         let mut c = Vec::new();
-        for i in 0..self.parameters().borrow().degree as usize {
+        for i in 0..self.parameters().degree as usize {
             c.push(mod_coeff(
                 (self.val.get(i).unwrap_or(&Val::zero())).clone(),
                 self.t_relin(),
@@ -343,8 +334,8 @@ where
         Polynomial::new(c, self.parameters())
     }
     pub fn new_mul(&self, rhs: &Self) -> Self {
-        let degree = self.parameters().borrow().degree;
-        let q = self.parameters().borrow().q.clone();
+        let degree = self.parameters().degree;
+        let q = self.parameters().q.clone();
         let psi = &Ntt::second_primitive_root(&q, degree);
         let res = Ntt::ntt_mult(self.clone(), rhs.clone(), &q, psi);
         res
@@ -442,10 +433,10 @@ where
 
     fn mul(self, rhs: Self) -> Self::Output {
         //return self.old_mul(rhs);
-        let degree = self.parameters().borrow().degree;
-        let q = self.parameters().borrow().q.clone();
+        let degree = self.parameters().degree;
+        let q = self.parameters().q.clone();
         let q_2 = q; //(q.clone() * q) / (Val::one() + Val::one() + Val::one());
-        let psi = &self.parameters.borrow().root.clone();
+        let psi = &self.parameters.root.clone();
         if (psi == &Val::zero()) {
             let psi = &Ntt::second_primitive_root(&q_2, degree);
         }
@@ -577,7 +568,7 @@ pub fn degree<Val: Value>(a: &Vec<Val>) -> usize {
 }
 pub fn make_fx<Val: Value>(parameters: &Params<Val>) -> Polynomial<Val> {
     let mut val = vec![Val::one()];
-    for _ in 0..(parameters.borrow().degree - 1) {
+    for _ in 0..(parameters.degree - 1) {
         val.push(Val::zero());
     }
     val.push(Val::one());
@@ -706,7 +697,7 @@ mod tests {
             log_range: 0,
             root: 0,
         };
-        let _p = &Rc::new(RefCell::new(parameters));
+        let _p = &Rc::new(parameters);
         let p1 = Polynomial::new(vec![1, 2, 3, 4], _p);
         let p2 = Polynomial::new(vec![5, 6, 7, 8], _p);
         let right = &p1 * &p2;
@@ -724,7 +715,7 @@ mod tests {
             log_range: 0,
             root: 0,
         };
-        let _p = &Rc::new(RefCell::new(parameters));
+        let _p = &Rc::new(parameters);
 
         let p1 = Polynomial::new(vec![1, 2, 3, 4], _p);
         let p2 = Polynomial::new(vec![5, 6, 7, 8], _p);
@@ -750,7 +741,7 @@ mod tests {
             log_range: 0,
             root: 0,
         };
-        let _p = &Rc::new(RefCell::new(parameters));
+        let _p = &Rc::new(parameters);
         let right = Polynomial::new(vec![5, 16, 34, 60, 61, 52, 32], _p);
         assert_eq!(
             /*&right % &make_fx(_p)*/ right.get_mod().mod_q(),
@@ -768,7 +759,7 @@ mod tests {
             log_range: 0,
             root: BigInt::try_from(0).unwrap(),
         };
-        let _p = &Rc::new(RefCell::new(parameters));
+        let _p = &Rc::new(parameters);
         // let p1 = Polynomial::new(
         //     vec![
         //         BigInt::try_from(1).unwrap(),
@@ -792,8 +783,8 @@ mod tests {
         let ls = p1.old_mul(&p2);
         let ls = RLWE::delta_polyn(ls.clone()).mod_q();
         println!("LS: {}", ls);
-        let degree = p1.parameters().borrow().degree;
-        let q = &p1.parameters().borrow().q.clone();
+        let degree = p1.parameters().degree;
+        let q = &p1.parameters().q.clone();
         let big_q = &BigInt::try_from((q - 1) * 17 + 1).unwrap();
         let psi = &Ntt::second_primitive_root(big_q, degree);
         let p1_ntt = Ntt::iter_cooley_tukey(p1, psi, big_q);
@@ -819,14 +810,14 @@ mod tests {
             log_range: 0,
             root: 0,
         };
-        let _p = &Rc::new(RefCell::new(parameters));
+        let _p = &Rc::new(parameters);
         let p1 = Polynomial::new(vec![1, 2, 3, 4], _p);
         let p2 = Polynomial::new(vec![5, 6, 7, 8], _p);
         let ls = p1.old_mul(&p2);
         let ls = RLWE::delta_polyn(ls).mod_q();
         println!("LS: {}", ls);
-        let degree = p1.parameters().borrow().degree;
-        let q = &p1.parameters().borrow().q.clone();
+        let degree = p1.parameters().degree;
+        let q = &p1.parameters().q.clone();
         let psi = &Ntt::second_primitive_root(q, degree);
         let p1_ntt = Ntt::iter_cooley_tukey(p1, psi, q);
         let p2_ntt = Ntt::iter_cooley_tukey(p2, psi, q);
@@ -853,7 +844,7 @@ mod tests {
             log_range: 0,
             root: Fraction::from_i64(0).unwrap(),
         };
-        let _p = &Rc::new(RefCell::new(parameters));
+        let _p = &Rc::new(parameters);
         let x = Fraction::new(1, 1);
         let mut a = Polynomial::new(
             vec![
@@ -913,8 +904,8 @@ mod tests {
             log_range: 0,
             root: 0,
         };
-        let _p = &Rc::new(RefCell::new(parameters));
-        let _ip = &Rc::new(RefCell::new(i_parameters));
+        let _p = &Rc::new(parameters);
+        let _ip = &Rc::new(i_parameters);
         let x = Fraction::new(1, 1);
         let mut a = Polynomial::new(vec![Fraction::new(8, 1), Fraction::new(1, 1)], _p);
         let mut b = Polynomial::new(

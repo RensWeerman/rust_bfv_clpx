@@ -136,14 +136,14 @@ where
 
     pub fn element_wise_mult(a: Polynomial<Val>, b: Polynomial<Val>, q: &Val) -> Polynomial<Val> {
         let mut res = vec![];
-        for i in 0..(a.parameters().borrow().degree as usize) {
+        for i in 0..(a.parameters().degree as usize) {
             res.push(a.val[i].clone() * b.val[i].clone());
         }
         Polynomial::new(res, a.parameters())
     }
     pub fn element_wise_div(a: Polynomial<Val>, b: Polynomial<Val>, q: &Val) -> Polynomial<Val> {
         let mut res = vec![];
-        for i in 0..(a.parameters().borrow().degree as usize) {
+        for i in 0..(a.parameters().degree as usize) {
             if b.val[i] != Val::zero() {
                 res.push(a.val[i].clone() / b.val[i].clone());
             }
@@ -252,7 +252,7 @@ where
     }
 
     pub fn iter_cooley_tukey(x: Polynomial<Val>, psi: &Val, q: &Val) -> Polynomial<Val> {
-        let degree = x.parameters().borrow().degree as usize;
+        let degree = x.parameters().degree as usize;
         let roots = Ntt::stored_roots(psi, q, degree as i64);
         let mut a = x.val.clone();
         let mut t = degree;
@@ -277,7 +277,7 @@ where
         return Polynomial::new(a, x.parameters());
     }
     pub fn iter_gentleman_sande(x: Polynomial<Val>, psi: &Val, q: &Val) -> Polynomial<Val> {
-        let degree = x.parameters().borrow().degree as usize;
+        let degree = x.parameters().degree as usize;
         let roots = Ntt::stored_roots(&Ntt::inverse(psi, q), q, degree as i64);
         let mut a = x.val.clone();
         let mut t = 1;
@@ -318,9 +318,9 @@ mod tests {
     #[test]
 
     fn test_cooley_tukey() {
-        let _p = &Rc::new(RefCell::new(get_def_params()));
-        let q = &_p.borrow().q;
-        let degree = _p.borrow().degree;
+        let _p = &Rc::new(get_def_params());
+        let q = &_p.q;
+        let degree = _p.degree;
         let psi = &Ntt::second_primitive_root(q, degree);
         println!("PSI FOR DEGREE 2: {}", Ntt::second_primitive_root(q, 1));
         let ls = Ntt::cooley_tukey(Polynomial::new(vec![1, 2, 3, 4], _p), psi, q);
@@ -329,8 +329,8 @@ mod tests {
     }
     //#[test]
     fn test_cooley_tukey_2() {
-        let _p = &Rc::new(RefCell::new(get_def_params()));
-        let q = &_p.borrow().q;
+        let _p = &Rc::new(get_def_params());
+        let q = &_p.q;
         let psi = &Ntt::second_primitive_root(q, 8);
         let ls = Ntt::cooley_tukey(Polynomial::new(vec![1, 2, 3, 4, 5, 6, 7, 8], _p), psi, q);
         println!("Cooley-Tukey result: ");
@@ -343,9 +343,9 @@ mod tests {
     }
     #[test]
     fn test_iter_cooley_tukey() {
-        let _p = &Rc::new(RefCell::new(get_def_params()));
+        let _p = &Rc::new(get_def_params());
 
-        let q = &_p.borrow().q;
+        let q = &_p.q;
         let psi = &Ntt::second_primitive_root(q, 4);
         let mut ls = Ntt::iter_cooley_tukey(Polynomial::new(vec![1, 2, 3, 4], _p), psi, q);
         println!("Cooley-Tukey result: ");
@@ -368,9 +368,9 @@ mod tests {
             log_range: 0,
             root: 0,
         };
-        let _p = &Rc::new(RefCell::new(params));
+        let _p = &Rc::new(params);
 
-        let q = &_p.borrow().q;
+        let q = &_p.q;
         let psi = &Ntt::second_primitive_root(q, 8);
         let mut ls =
             Ntt::iter_cooley_tukey(Polynomial::new(vec![1, 2, 3, 4, 5, 6, 7, 8], _p), psi, q);
@@ -385,7 +385,7 @@ mod tests {
     }
     #[test]
     fn test_iter_gentleman_sande() {
-        let _p = &Rc::new(RefCell::new(get_def_params()));
+        let _p = &Rc::new(get_def_params());
 
         let q = &7681;
         let psi = &Ntt::second_primitive_root(q, 4);
@@ -426,7 +426,7 @@ mod tests {
 
     #[test]
     fn ntt_result() {
-        let _p = &Rc::new(RefCell::new(get_def_params()));
+        let _p = &Rc::new(get_def_params());
 
         let omega = Ntt::primitive_root(&7681, 4);
         let ls = Ntt::ntt(Polynomial::new(vec![1, 2, 3, 4], _p), &omega, &7681);
@@ -435,7 +435,7 @@ mod tests {
     }
     #[test]
     fn second_ntt_result() {
-        let _p = &Rc::new(RefCell::new(get_def_params()));
+        let _p = &Rc::new(get_def_params());
 
         let psi = &Ntt::second_primitive_root(&7681, 4);
         let ls = Ntt::second_ntt(Polynomial::new(vec![1, 2, 3, 4], _p), psi, &7681);
@@ -450,7 +450,7 @@ mod tests {
     }
     #[test]
     fn test_inv_ntt() {
-        let _p = &Rc::new(RefCell::new(get_def_params()));
+        let _p = &Rc::new(get_def_params());
 
         let initial_vector = Polynomial::new(vec![1, 2, 3, 4], _p);
         let q = &7681;
@@ -461,11 +461,11 @@ mod tests {
     }
     #[test]
     fn test_ntt_mult() {
-        let _p = &Rc::new(RefCell::new(get_def_params()));
+        let _p = &Rc::new(get_def_params());
 
         let poly_1 = Polynomial::new(vec![1, 2, 3, 4], _p);
         let poly_2 = Polynomial::new(vec![5, 6, 7, 8], _p);
-        let q = &_p.borrow().q;
+        let q = &_p.q;
         //let q =
         let omega = &Ntt::primitive_root(q, 4);
         let dft_1 = Ntt::ntt(poly_1.clone(), omega, q);
@@ -488,7 +488,7 @@ mod tests {
     }
     //#[test]
     fn test_second_inv_ntt() {
-        let _p = &Rc::new(RefCell::new(get_def_params()));
+        let _p = &Rc::new(get_def_params());
 
         let initial_vector = Polynomial::new(vec![1, 2, 3, 4, 5, 6, 7], _p);
         let q = &7681;
@@ -500,11 +500,11 @@ mod tests {
     }
     #[test]
     fn test_second_ntt_mult() {
-        let _p = &Rc::new(RefCell::new(get_def_params()));
+        let _p = &Rc::new(get_def_params());
 
         let poly_1 = Polynomial::new(vec![1, 2, 3, 4], _p);
         let poly_2 = Polynomial::new(vec![5, 6, 7, 8], _p);
-        let q = &_p.borrow().q;
+        let q = &_p.q;
         let psi = &Ntt::second_primitive_root(q, 4);
         let dft_1 = Ntt::second_ntt(poly_1.clone(), psi, q);
         let dft_2 = Ntt::second_ntt(poly_2.clone(), psi, q);
@@ -542,10 +542,10 @@ mod tests {
     }
     #[test]
     fn final_test_ntt_mult() {
-        let _p = &Rc::new(RefCell::new(get_def_params()));
+        let _p = &Rc::new(get_def_params());
 
-        let q = &_p.borrow().q;
-        let degree = _p.borrow().degree;
+        let q = &_p.q;
+        let degree = _p.degree;
         let psi = &Ntt::second_primitive_root(q, degree);
         let a = Polynomial::new(vec![1, 2, 3, 4], _p);
         let b = Polynomial::new(vec![5, 6, 7, 8], _p);

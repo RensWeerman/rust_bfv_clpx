@@ -8,7 +8,7 @@ use crate::{
     print_vec,
 };
 
-pub type Params<Values> = Rc<RefCell<Parameters<Values>>>;
+pub type Params<Values> = Rc<Parameters<Values>>;
 pub struct RLWE<Val> {
     secret: Polynomial<Val>,
     pub public: (Polynomial<Val>, Polynomial<Val>),
@@ -29,22 +29,22 @@ where
         }
     }
     pub fn t_relin(&self) -> Val {
-        return self.parameters.borrow().t_relin.clone();
+        return self.parameters.t_relin.clone();
     }
     pub fn q(&self) -> Val {
-        return self.parameters.borrow().q.clone();
+        return self.parameters.q.clone();
     }
     pub fn p(&self) -> Val {
-        return self.parameters.borrow().p.clone();
+        return self.parameters.p.clone();
     }
     pub fn t(&self) -> Val {
-        return self.parameters.borrow().t.clone().get(0).unwrap().clone();
+        return self.parameters.t.clone().get(0).unwrap().clone();
     }
     pub fn t_full(&self) -> Vec<Val> {
-        return self.parameters.borrow().t.clone();
+        return self.parameters.t.clone();
     }
     pub fn log_range(&self) -> usize {
-        return self.parameters.borrow().log_range.clone();
+        return self.parameters.log_range.clone();
     }
     pub fn parameters(&self) -> &Params<Val> {
         return &self.parameters;
@@ -209,7 +209,7 @@ where
         let params = m.parameters();
         let t = Polynomial::new(m.t_full(), params);
         let f_params = Fraction::frac_params(params);
-        let _fp = &Rc::new(RefCell::new(f_params));
+        let _fp = &Rc::new(f_params);
         let t_frac = Fraction::frac_poly(t.clone(), _fp);
         let fx = make_fx(params);
         let fx_frac = Fraction::frac_poly(fx.clone(), _fp);
@@ -242,14 +242,14 @@ where
         let params = c.parameters();
         let t = Polynomial::new(c.t_full(), params);
         let f_params = Fraction::frac_params(params);
-        let _fp = &Rc::new(RefCell::new(f_params));
+        let _fp = &Rc::new(f_params);
         let t_frac = Fraction::frac_poly(t, _fp);
         let fx = make_fx(params);
         let fx_frac = Fraction::frac_poly(fx, _fp);
         let old_s = Polynomial::extended_gcd(&t_frac, &fx_frac);
         let mut temp = vec![];
         for x in old_s.val {
-            temp.push(_fp.borrow().q.clone() * x.reduce());
+            temp.push(_fp.q.clone() * x.reduce());
         }
         let delta = Polynomial::new(temp, _fp);
         let c_frac = Fraction::frac_poly(c.clone(), _fp);
@@ -274,15 +274,15 @@ where
         }
 
         let t = Polynomial::new(c.t_full(), params);
-        let range = params.borrow().degree as usize / t.degree();
+        let range = params.degree as usize / t.degree();
         println!("LOOP AMOUNT: {}", range);
-        let mut x = vec![Val::zero(); params.borrow().degree as usize];
+        let mut x = vec![Val::zero(); params.degree as usize];
         let val = (t.val.get(0).unwrap()).clone();
 
         for i in 1..(range + 1) {
-            let res = square_multiply(Val::zero() - val.clone(), i - 1, params.borrow().q.clone());
+            let res = square_multiply(Val::zero() - val.clone(), i - 1, params.q.clone());
             println!("Val : {} ", res);
-            x[params.borrow().degree as usize - (t.degree() * i)] = res;
+            x[params.degree as usize - (t.degree() * i)] = res;
         }
         let delta = Polynomial::new(x.to_vec(), params);
         println!("Delta before scaling: {}", delta);
@@ -364,8 +364,8 @@ where
         ct1: &(Polynomial<Val>, Polynomial<Val>),
         ct2: &(Polynomial<Val>, Polynomial<Val>),
     ) -> (Polynomial<Val>, Polynomial<Val>, Polynomial<Val>) {
-        let degree = ct1.0.parameters().borrow().degree;
-        let q = &ct1.0.parameters().borrow().q.clone();
+        let degree = ct1.0.parameters().degree;
+        let q = &ct1.0.parameters().q.clone();
         let psi = &Ntt::second_primitive_root(q, degree);
         let ct0 = Ntt::iter_cooley_tukey(ct1.0.clone(), psi, q);
         let ct1 = Ntt::iter_cooley_tukey(ct1.1.clone(), psi, q);
@@ -551,7 +551,7 @@ mod tests {
 
     #[test]
     fn encrypt_decrypt() {
-        let _p = &Rc::new(RefCell::new(get_def_params()));
+        let _p = &Rc::new(get_def_params());
         let mut keys = RLWE::new(_p);
         let m = Polynomial::new(vec![1, 5, 0, 0], _p);
         let ct = RLWE::encrypt(&keys.public, &m);
@@ -560,7 +560,7 @@ mod tests {
     }
     #[test]
     fn encrypt_add_decrypt() {
-        let _p = &Rc::new(RefCell::new(get_def_params()));
+        let _p = &Rc::new(get_def_params());
         let mut keys = RLWE::new(_p);
         let m1 = Polynomial::new(vec![1, 0, 0, 1], _p);
         let m2 = Polynomial::new(vec![0, 0, 1, 1], _p);
@@ -582,8 +582,8 @@ mod tests {
             log_range: 7681_i64.ilog(32) as usize + 1, //println!("{}", (self.q().checked_ilog(self.t_relin()).unwrap()) + 1);,
             root: 0,
         };
-        let _p = &Rc::new(RefCell::new(parameters));
-        println!("log_range: {}", _p.borrow().log_range);
+        let _p = &Rc::new(parameters);
+        println!("log_range: {}", _p.log_range);
         let mut keys = RLWE::new(_p);
         let m1 = Polynomial::new(vec![4, 19, 0, 7], _p);
         let m2 = Polynomial::new(vec![1, 1, 8, 2], _p);
@@ -621,8 +621,8 @@ mod tests {
             log_range: 7681_i64.ilog(32) as usize + 1, //println!("{}", (self.q().checked_ilog(self.t_relin()).unwrap()) + 1);,
             root: 0,
         };
-        let _p = &Rc::new(RefCell::new(parameters));
-        println!("log_range: {}", _p.borrow().log_range);
+        let _p = &Rc::new(parameters);
+        println!("log_range: {}", _p.log_range);
         let mut keys = RLWE::new(_p);
         let m1 = Polynomial::new(vec![1, 0, 0, 1, 0, 1, 1, 0], _p);
         let m2 = Polynomial::new(vec![1, 1, 0, 0, 1, 1, 0, 1], _p);
@@ -659,8 +659,8 @@ mod tests {
             log_range: 7681_i64.ilog(32) as usize + 1, //println!("{}", (self.q().checked_ilog(self.t_relin()).unwrap()) + 1);,
             root: 0,
         };
-        let _p = &Rc::new(RefCell::new(parameters));
-        println!("log_range: {}", _p.borrow().log_range);
+        let _p = &Rc::new(parameters);
+        println!("log_range: {}", _p.log_range);
         let mut keys = RLWE::new(_p);
         let m1 = Polynomial::uniform_sample(_p).mod_t();
         let m2 = Polynomial::uniform_sample(_p).mod_t();
@@ -688,8 +688,8 @@ mod tests {
     }
     #[test]
     fn testing_mod_q() {
-        let _p = &Rc::new(RefCell::new(get_def_params()));
-        let q = _p.borrow().q;
+        let _p = &Rc::new(get_def_params());
+        let q = _p.q;
         assert_eq!(
             Polynomial::new(vec![1, (-2_i64).rem_euclid(q), 3, 6], _p),
             Polynomial::new(vec![1 + q, -2 + q, 3 + q, 6 + q], _p).mod_q()
@@ -705,7 +705,7 @@ mod tests {
     //
     //#[test]
     fn comparing_old_new_mul() {
-        let _p = &Rc::new(RefCell::new(get_def_params()));
+        let _p = &Rc::new(get_def_params());
         let secret = RLWE::new(_p);
         let ciphertext_1 = RLWE::encrypt(
             &secret.public,
@@ -733,11 +733,11 @@ mod tests {
             log_range: 7681_i64.ilog(32) as usize + 1, //println!("{}", (self.q().checked_ilog(self.t_relin()).unwrap()) + 1);,
             root: 0,
         };
-        let _p = &Rc::new(RefCell::new(parameters));
+        let _p = &Rc::new(parameters);
 
         println!("make_fx : {}", make_fx(_p));
         let mut keys = RLWE::new(_p);
-        let test_t = Polynomial::new(_p.borrow().t.clone(), _p);
+        let test_t = Polynomial::new(_p.t.clone(), _p);
         let m = Polynomial::new(vec![18], _p);
         let flat_m = RLWE::flatten_m(m.clone());
         let ct = RLWE::encrypt(&keys.public, &flat_m);
@@ -760,11 +760,11 @@ mod tests {
             log_range: 7681_i64.ilog(32) as usize + 1, //println!("{}", (self.q().checked_ilog(self.t_relin()).unwrap()) + 1);,
             root: 0,
         };
-        let _p = &Rc::new(RefCell::new(parameters));
+        let _p = &Rc::new(parameters);
 
         println!("make_fx : {}", make_fx(_p));
         let mut keys = RLWE::new(_p);
-        let test_t = Polynomial::new(_p.borrow().t.clone(), _p);
+        let test_t = Polynomial::new(_p.t.clone(), _p);
         //let m = Polynomial::new(vec![2, 2, 3, 1, 2], _p);
         let m = Polynomial::new(vec![1], _p);
         //let m = &m % &test_t;

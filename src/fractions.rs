@@ -25,7 +25,7 @@ where
         Self { num, den }
     }
     pub fn frac_params(parameters: &Params<Val>) -> Parameters<Fraction<Val>> {
-        let p = parameters.borrow();
+        let p = parameters;
         let mut temp = vec![];
         for x in p.t.clone() {
             temp.push(Fraction::new(x, Val::one()));

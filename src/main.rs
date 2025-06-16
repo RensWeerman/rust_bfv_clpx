@@ -35,7 +35,7 @@ fn decrypt_vs_3decrypt(t: i64) {
         log_range: 768100_i64.ilog(32) as usize + 1, //println!("{}", (self.q().checked_ilog(self.t_relin()).unwrap()) + 1);,
         root: 0,
     };
-    let _p = &Rc::new(RefCell::new(parameters));
+    let _p = &Rc::new(parameters);
     let m1 = Polynomial::uniform_sample(_p).mod_t();
     let m2 = Polynomial::uniform_sample(_p).mod_t();
 
@@ -69,7 +69,7 @@ fn example_decrypt() {
         log_range: 0,
         root: 0,
     };
-    let _p = &Rc::new(RefCell::new(parameters));
+    let _p = &Rc::new(parameters);
 
     let mut secret = RLWE::_new(vec![1, 0, 1, 0], _p);
 
@@ -98,7 +98,7 @@ fn example_encrypt() {
         log_range: 0,
         root: 0,
     };
-    let _p = &Rc::new(RefCell::new(parameters));
+    let _p = &Rc::new(parameters);
 
     let pk_0 = Polynomial::new(vec![74, 71, 77, 98], _p);
     let u = Polynomial::new(vec![0, 1, 0, 0], _p);
@@ -135,7 +135,7 @@ fn example_pk() {
         log_range: 0,
         root: 0,
     };
-    let _p = &Rc::new(RefCell::new(parameters));
+    let _p = &Rc::new(parameters);
     let a = Polynomial::new(vec![74, 15, 49, 86], _p);
     let e = Polynomial::new(vec![1, 0, 0, 1], _p);
     let secret = Polynomial::new(vec![1, 0, 1, 0], _p);
@@ -211,7 +211,7 @@ fn p_q_gradient() {
     for i in 1..(parameters.q) {
         for _ in 1..40 {
             parameters.t = vec![i];
-            let _p = &Rc::new(RefCell::new(parameters.clone()));
+            let _p = &Rc::new(parameters.clone());
             let m = Polynomial::new(vec![5, 5, 5, 5], _p);
 
             let mut secret = RLWE::new(_p);
@@ -237,7 +237,7 @@ fn timing_addition() {
         log_range: 0,
         root: BigInt::from_str("160122687026568703260160820745333646557040369694442191388605703127148838809696464960419374948428326604331490224104058569398").unwrap(),
     };
-    let _p = &Rc::new(RefCell::new(parameters));
+    let _p = &Rc::new(parameters);
 
     let p1 = Polynomial::uniform_sample(_p).mod_t(); //Polynomial::new(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], _p);
     let p2 = Polynomial::uniform_sample(_p).mod_t(); //Polynomial::new(vec![3, 2, 1, 4, 5, 6, 7, 8, 9, 10, 11, 12], _p);
@@ -267,7 +267,7 @@ fn timing_multiplication() {
         log_range: 0,
         root: BigInt::from_str("354363855417910436849378356982599500396178680480945").unwrap(),
     };
-    let _p = &Rc::new(RefCell::new(parameters));
+    let _p = &Rc::new(parameters);
 
     let p1 = Polynomial::uniform_sample(_p).mod_t(); //Polynomial::new(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], _p);
     let p2 = Polynomial::uniform_sample(_p).mod_t(); //Polynomial::new(vec![3, 2, 1, 4, 5, 6, 7, 8, 9, 10, 11, 12], _p);
@@ -299,7 +299,7 @@ fn timing_encryption() {
         log_range: 0,
         root: BigInt::from_str("160122687026568703260160820745333646557040369694442191388605703127148838809696464960419374948428326604331490224104058569398").unwrap(),
     };
-    let _p = &Rc::new(RefCell::new(parameters));
+    let _p = &Rc::new(parameters);
 
     let p1 = Polynomial::uniform_sample(_p).mod_t();
 
@@ -322,7 +322,7 @@ fn timing_decryption() {
         log_range: 0,
         root: BigInt::from_str("160122687026568703260160820745333646557040369694442191388605703127148838809696464960419374948428326604331490224104058569398").unwrap(),
     };
-    let _p = &Rc::new(RefCell::new(parameters));
+    let _p = &Rc::new(parameters);
 
     let p1 = Polynomial::uniform_sample(_p).mod_t();
 
@@ -347,7 +347,7 @@ fn test_iter_cooley_tukey_2() {
         log_range: 0,
         root: 0,
     };
-    let _p = &Rc::new(RefCell::new(parameters));
+    let _p = &Rc::new(parameters);
 
     let psi = &Ntt::second_primitive_root(&7681, 8);
     let q = &7681;
@@ -374,10 +374,10 @@ fn test_multiplying_speeds() {
         log_range: 0,
         root: 0,
     };
-    let _p = &Rc::new(RefCell::new(parameters));
-    let q = &_p.borrow().q;
+    let _p = &Rc::new(parameters);
+    let q = &_p.q;
 
-    let psi = &Ntt::second_primitive_root(q, _p.borrow().degree as i64);
+    let psi = &Ntt::second_primitive_root(q, _p.degree as i64);
 
     let a = Polynomial::normal_sample(_p);
     let b = Polynomial::normal_sample(_p);
@@ -409,10 +409,10 @@ fn testing_big_ints() {
         log_range: 0,
         root: BigInt::try_from(0).unwrap(),
     };
-    let _p = &Rc::new(RefCell::new(parameters));
-    let q = &_p.borrow().q.clone();
+    let _p = &Rc::new(parameters);
+    let q = &_p.q.clone();
 
-    let psi = &Ntt::second_primitive_root(q, _p.borrow().degree as i64);
+    let psi = &Ntt::second_primitive_root(q, _p.degree as i64);
 
     let a = Polynomial::uniform_sample(_p);
     let b = Polynomial::uniform_sample(_p);
@@ -445,7 +445,7 @@ fn broken_example() {
         log_range: 0,
         root: 0,
     };
-    let _p = &Rc::new(RefCell::new(parameters.clone()));
+    let _p = &Rc::new(parameters.clone());
     let m = Polynomial::new(vec![0, 0, 0, 0], _p);
 
     let mut secret = RLWE::new(_p);
@@ -491,7 +491,7 @@ fn main() {
         log_range: 0,
         root: 0,
     };
-    let _p = &Rc::new(RefCell::new(parameters));
+    let _p = &Rc::new(parameters);
     let secret = Polynomial::new(vec![0, 1, 1, 0], _p);
     let a: Polynomial<i64> = Polynomial::new(vec![1280, -1, -1945, -2597, -2315, -1851, -1468], _p);
     let b = Polynomial::new(vec![0, 1946, 1932, 383, 1468], _p);
