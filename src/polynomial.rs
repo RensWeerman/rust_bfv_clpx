@@ -1,6 +1,6 @@
 use num_bigint::{BigInt, RandBigInt};
 
-use crate::{fractions::Fraction, rlwe::Params};
+use crate::rlwe::Params;
 use num_traits::{one, zero, Euclid, FromPrimitive, One, Zero};
 use rand_distr::{Distribution, Normal, Uniform};
 use std::{
@@ -683,11 +683,6 @@ mod tests {
 
     #[test]
     fn first_step() {
-        /*pub const DEGREE: i32 = 4;
-        pub const Q: i32 = 7681; //1291; //9073;
-        pub const T: i32 = 6;
-        pub const T_RELIN: i32 = 32;
-        pub const P: i32 = 4;*/
         let parameters = Parameters {
             degree: 4,
             q: 7681,
@@ -700,7 +695,7 @@ mod tests {
         let _p = &Rc::new(parameters);
         let p1 = Polynomial::new(vec![1, 2, 3, 4], _p);
         let p2 = Polynomial::new(vec![5, 6, 7, 8], _p);
-        let right = &p1 * &p2;
+        let right = p1.old_mul(&p2);
         let left = Polynomial::new(vec![5, 16, 34, 60, 61, 52, 32], _p);
         assert_eq!(left.get_mod(), right.get_mod());
     }
@@ -720,7 +715,7 @@ mod tests {
         let p1 = Polynomial::new(vec![1, 2, 3, 4], _p);
         let p2 = Polynomial::new(vec![5, 6, 7, 8], _p);
         //let left = Polynomial::new(vec![-56, -36, 2, 60], _p);
-        let left = &p1 * &p2;
+        let left = p1.old_mul(&p2);
 
         //let left = left.normal_mod(_p.borrow().q);
         let left = &left.get_mod();

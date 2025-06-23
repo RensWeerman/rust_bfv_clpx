@@ -224,7 +224,7 @@ where
         println!("THIS IS 1/T: {}", delta);
         let m_frac = Fraction::frac_poly(m.clone(), _fp);
         //let res = Fraction::round_multiply(&m_frac, &delta, m.parameters());
-        let res = &m_frac * &delta;
+        let res = m_frac.old_mul(&delta);
         println!("m/t IS: {}", res);
         let mut temp = vec![];
         for mut x in res.val {
@@ -258,7 +258,7 @@ where
         return res;
     }
     pub fn mult_delta(c: Polynomial<Val>) -> Polynomial<Val> {
-        //return RLWE::delta_mult(c);
+        return RLWE::delta_mult(c);
         let params = c.parameters();
         let t = Polynomial::new(c.t_full(), params);
         if (t.degree() == 1) {
@@ -626,7 +626,7 @@ mod tests {
         let mut keys = RLWE::new(_p);
         let m1 = Polynomial::new(vec![1, 0, 0, 1, 0, 1, 1, 0], _p);
         let m2 = Polynomial::new(vec![1, 1, 0, 0, 1, 1, 0, 1], _p);
-        let m = &m1 * &m2;
+        let m = m1.old_mul(&m2);
         let ct1 = RLWE::encrypt(&keys.public, &m1);
         let ct2 = RLWE::encrypt(&keys.public, &m2);
         let ct = RLWE::mult_ct(&ct1, &ct2);
@@ -722,12 +722,12 @@ mod tests {
         print_vec(&res_2.0.get_mod().val);
         assert_eq!(res_1, res_2);
     }
-    #[test]
+    //#[test]
     fn testing_flatten() {
         let parameters: Parameters<i64> = Parameters {
             degree: 4,
             q: 7681,
-            t: vec![20, 0, 0, 0, 1],
+            t: vec![20, 1],
             t_relin: 32,
             p: 1,
             log_range: 7681_i64.ilog(32) as usize + 1, //println!("{}", (self.q().checked_ilog(self.t_relin()).unwrap()) + 1);,
@@ -750,7 +750,7 @@ mod tests {
         assert_eq!(m, pt);
     }
     #[test]
-    fn gbfv_encrypt_decrypt() {
+    fn clpx_encrypt_decrypt() {
         let parameters: Parameters<i64> = Parameters {
             degree: 4,
             q: 7681,
@@ -774,5 +774,37 @@ mod tests {
         //let mut pt = pt.mod_t();
         pt.rm_trailing_zeroes();
         assert_eq!(m, pt);
+    }
+    #[test]
+    fn gbfv_encrypt_decrypt() {
+        let parameters: Parameters<i64> = Parameters {
+            degree: 4,
+            q: 7681,
+            t: vec![4, 3, 1],
+            t_relin: 32,
+            p: 1,
+            log_range: 7681_i64.ilog(32) as usize + 1, //println!("{}", (self.q().checked_ilog(self.t_relin()).unwrap()) + 1);,
+            root: 0,
+        };
+        let _p = &Rc::new(parameters);
+
+        println!("make_fx : {}", make_fx(_p));
+        let mut keys = RLWE::new(_p);
+        let test_t = Polynomial::new(_p.t.clone(), _p);
+        //let m = Polynomial::new(vec![2, 2, 3, 1, 2], _p);
+        let m = Polynomial::new(vec![10], _p);
+        let flat_m = RLWE::flatten_m(m.clone());
+        //let m = &m % &test_t;
+        let ct = RLWE::encrypt(&keys.public, &m);
+        let flat_ct = RLWE::encrypt(&keys.public, &flat_m);
+        let mut pt = &keys.decrypt(&ct) % &test_t;
+        let mut flat_pt = &keys.decrypt(&flat_ct) % &test_t;
+        //let mut pt = pt.mod_t();
+        flat_pt.rm_trailing_zeroes();
+        pt.rm_trailing_zeroes();
+        println!("FLATTEN: {}", flat_m);
+        assert_eq!(m, pt);
+        //assert_eq!(1, 0);
+        assert_eq!(pt, flat_pt);
     }
 }

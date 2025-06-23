@@ -516,7 +516,7 @@ mod tests {
         println!("mult_DFT:");
         print_vec(&mult_dft.val);
         let ls = Ntt::second_inv_ntt(mult_dft.mod_q(), psi, q);
-        let rs = (&poly_1 * &poly_2).get_mod().mod_q();
+        let rs = (poly_1.old_mul(&poly_2)).get_mod().mod_q();
         print_vec(&ls.val);
         assert_eq!(ls, rs);
     }
